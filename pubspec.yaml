@@ -1,0 +1,49 @@
+name: finance_tracker
+description: Personal income, expense, and budget tracker with SMS auto-detection.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Local database
+  sqflite: ^2.3.3
+  path: ^1.9.0
+
+  # SMS reading (Android only)
+  another_telephony: ^0.4.0
+
+  # Notifications (cap alerts + reports)
+  flutter_local_notifications: ^17.2.2
+
+  # Background scheduled tasks (daily/monthly reports)
+  workmanager: ^0.5.2
+
+  # Charts for reports screen
+  fl_chart: ^0.68.0
+
+  # Formatting currency/dates
+  intl: ^0.19.0
+
+  # Simple persisted settings (report frequency, payday, currency)
+  shared_preferences: ^2.2.3
+
+  # Unique IDs for categories/transactions
+  uuid: ^4.4.0
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
