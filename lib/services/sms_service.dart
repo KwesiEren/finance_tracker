@@ -1,34 +1,30 @@
 import 'package:another_telephony/telephony.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
+import 'sms_template_matcher.dart';
 
-/// Reads incoming SMS (Android only — iOS does not allow programmatic SMS
-/// access) and parses bank/mobile-money debit/credit alerts into pending
-/// transactions the user reviews and confirms. Nothing is auto-logged
-/// silently: this reduces the risk of a bad regex match creating a wrong
-/// entry the user never notices.
+/// Reads incoming SMS (Android only) and matches them against the user's
+/// own taught templates (see teach_sms_screen.dart + sms_template_matcher.dart)
+/// instead of hardcoded per-bank regex.
+///
+/// Flow for every incoming message:
+///  1. Try to match it against a saved template for that sender.
+///     - Match found -> insert a pending transaction (still requires the
+///       user to confirm + pick a category, same as before).
+///  2. No match, but it looks financial (soft heuristic) ->
+///     drop it in "unrecognized_sms" so the user can teach a new template
+///     from it later, without hunting through their whole inbox.
+///  3. No match, doesn't look financial -> ignored entirely.
 class SmsService {
   final Telephony _telephony = Telephony.instance;
   final _uuid = const Uuid();
   final _db = DatabaseHelper.instance;
-
-  /// Common Ghanaian bank / MoMo alert phrasing. Extend this list as you
-  /// discover new formats — providers change wording occasionally, so this
-  /// should be treated as a living config, not a finished list.
-  static final List<RegExp> _patterns = [
-    // e.g. "You have been debited GHS 20.00 for..."
-    RegExp(r'debited.*?(?:GHS|GH₵)\s?([\d,]+\.?\d*)', caseSensitive: false),
-    // e.g. "You have received GHS 50.00 from..."
-    RegExp(r'(?:received|credited).*?(?:GHS|GH₵)\s?([\d,]+\.?\d*)', caseSensitive: false),
-  ];
 
   Future<bool> requestPermissions() async {
     final granted = await _telephony.requestPhoneAndSmsPermissions;
     return granted ?? false;
   }
 
-  /// Call once at app startup (after permission granted) to start listening
-  /// for new incoming messages in real time.
   void startListening() {
     _telephony.listenIncomingSms(
       onNewMessage: (SmsMessage message) => _handleIncoming(message),
@@ -36,8 +32,9 @@ class SmsService {
     );
   }
 
-  /// Optional: scan existing inbox on first setup so historical transactions
-  /// aren't missed (e.g. last 30 days).
+  /// Optional: scan existing inbox on first setup so historical messages
+  /// aren't missed, and so the "teach" screen has real examples to show
+  /// right after onboarding instead of starting empty.
   Future<void> scanInbox({int lookbackDays = 30}) async {
     final messages = await _telephony.getInboxSms(
       columns: [SmsColumn.BODY, SmsColumn.DATE, SmsColumn.ADDRESS],
@@ -53,39 +50,36 @@ class SmsService {
 
   Future<void> _handleIncoming(SmsMessage message) async {
     final body = message.body ?? '';
-    final parsed = _parse(body);
-    if (parsed == null) return; // not a financial SMS — ignore
+    final sender = message.address ?? 'Unknown';
+    if (body.isEmpty) return;
 
-    await _db.insertPendingSms({
-      'id': _uuid.v4(),
-      'amount': parsed.amount,
-      'type': parsed.type,
-      'smsDate': DateTime.now().toIso8601String(),
-      'rawSmsBody': body,
-      'suggestedCategoryId': null, // matched against past confirmations in the UI layer
-      'dismissed': 0,
-    });
-  }
+    final templates = await _db.getTemplates();
+    final amount = SmsTemplateMatcher.match(sender, body, templates);
 
-  _ParsedSms? _parse(String body) {
-    // Debit = expense
-    final debitMatch = _patterns[0].firstMatch(body);
-    if (debitMatch != null) {
-      final amount = double.tryParse(debitMatch.group(1)!.replaceAll(',', ''));
-      if (amount != null) return _ParsedSms(amount: amount, type: 'expense');
+    if (amount != null) {
+      final direction = SmsTemplateMatcher.matchDirection(sender, body, templates) ?? 'expense';
+      await _db.insertPendingSms({
+        'id': _uuid.v4(),
+        'amount': amount,
+        'type': direction,
+        'smsDate': DateTime.now().toIso8601String(),
+        'rawSmsBody': body,
+        'suggestedCategoryId': null,
+        'dismissed': 0,
+      });
+      return;
     }
-    // Credit = income
-    final creditMatch = _patterns[1].firstMatch(body);
-    if (creditMatch != null) {
-      final amount = double.tryParse(creditMatch.group(1)!.replaceAll(',', ''));
-      if (amount != null) return _ParsedSms(amount: amount, type: 'income');
-    }
-    return null;
-  }
-}
 
-class _ParsedSms {
-  final double amount;
-  final String type;
-  _ParsedSms({required this.amount, required this.type});
+    // No template matched — queue it for teaching only if it's plausibly
+    // a financial message, so the teach screen doesn't fill up with noise.
+    if (SmsTemplateMatcher.looksFinancial(body)) {
+      await _db.insertUnrecognized({
+        'id': _uuid.v4(),
+        'senderId': sender,
+        'body': body,
+        'receivedAt': DateTime.now().toIso8601String(),
+        'dismissed': 0,
+      });
+    }
+  }
 }

@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
 import '../models/category_model.dart';
 import '../models/transaction_model.dart';
+import '../models/sms_template_model.dart';
 
 /// Single source of truth for local storage. Everything lives on-device —
 /// no backend, no account needed. This keeps the app fast, offline-capable,
@@ -65,6 +66,32 @@ class DatabaseHelper {
         smsDate TEXT NOT NULL,
         rawSmsBody TEXT NOT NULL,
         suggestedCategoryId TEXT,
+        dismissed INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    // User-taught patterns — replaces hardcoded regex. Built from real
+    // messages the user tags during onboarding or the "teach" flow.
+    await db.execute('''
+      CREATE TABLE sms_templates (
+        id TEXT PRIMARY KEY,
+        senderId TEXT NOT NULL,
+        before TEXT NOT NULL,
+        after TEXT NOT NULL,
+        direction TEXT NOT NULL,
+        sampleBody TEXT NOT NULL,
+        createdAt TEXT NOT NULL
+      )
+    ''');
+
+    // Messages that looked financial (soft heuristic) but matched no
+    // saved template yet — surfaced to the user to teach or dismiss.
+    await db.execute('''
+      CREATE TABLE unrecognized_sms (
+        id TEXT PRIMARY KEY,
+        senderId TEXT NOT NULL,
+        body TEXT NOT NULL,
+        receivedAt TEXT NOT NULL,
         dismissed INTEGER NOT NULL DEFAULT 0
       )
     ''');
@@ -200,5 +227,49 @@ class DatabaseHelper {
   Future<void> dismissPendingSms(String id) async {
     final db = await database;
     await db.update('pending_sms', {'dismissed': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ---------------- SMS Templates (user-taught patterns) ----------------
+
+  Future<void> insertTemplate(SmsTemplateModel template) async {
+    final db = await database;
+    await db.insert('sms_templates', template.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<SmsTemplateModel>> getTemplates() async {
+    final db = await database;
+    final rows = await db.query('sms_templates', orderBy: 'createdAt DESC');
+    return rows.map((r) => SmsTemplateModel.fromMap(r)).toList();
+  }
+
+  Future<void> deleteTemplate(String id) async {
+    final db = await database;
+    await db.delete('sms_templates', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ---------------- Unrecognized SMS (candidates to teach) ----------------
+
+  Future<void> insertUnrecognized(Map<String, dynamic> row) async {
+    final db = await database;
+    // Avoid piling up duplicates of the exact same body from the same sender.
+    final existing = await db.query(
+      'unrecognized_sms',
+      where: 'senderId = ? AND body = ? AND dismissed = 0',
+      whereArgs: [row['senderId'], row['body']],
+    );
+    if (existing.isNotEmpty) return;
+    await db.insert('unrecognized_sms', row, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getUnrecognized() async {
+    final db = await database;
+    return db.query('unrecognized_sms',
+        where: 'dismissed = 0', orderBy: 'receivedAt DESC', limit: 50);
+  }
+
+  Future<void> dismissUnrecognized(String id) async {
+    final db = await database;
+    await db.update('unrecognized_sms', {'dismissed': 1}, where: 'id = ?', whereArgs: [id]);
   }
 }

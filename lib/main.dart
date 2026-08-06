@@ -8,6 +8,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/pending_sms_screen.dart';
+import 'screens/teach_sms_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,7 @@ class _RootNavState extends State<RootNav> {
   static const _screens = [
     DashboardScreen(),
     PendingSmsScreen(),
+    TeachSmsScreen(),
     ReportsScreen(),
     CategoriesScreen(),
   ];
@@ -68,6 +70,7 @@ class _RootNavState extends State<RootNav> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.sms_outlined), label: 'Detected'),
+          NavigationDestination(icon: Icon(Icons.school_outlined), label: 'Teach'),
           NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Reports'),
           NavigationDestination(icon: Icon(Icons.category_outlined), label: 'Categories'),
         ],
