@@ -1,48 +1,73 @@
-enum TransactionSource { manual, smsConfirmed, smsPending }
+import '/components/bottom_nav/bottom_nav_widget.dart';
+import '/components/bottom_nav_child4/bottom_nav_child4_widget.dart';
+import '/components/button/button_widget.dart';
+import '/components/category_selector/category_selector_widget.dart';
+import '/components/text_field/text_field_widget.dart';
+import '/flutter_flow/flutter_flow_icon_button.dart';
+import '/flutter_flow/flutter_flow_theme.dart';
+import '/flutter_flow/flutter_flow_util.dart';
+import '/flutter_flow/flutter_flow_widgets.dart';
+import 'dart:ui';
+import 'add_transaction_widget.dart' show AddTransactionWidget;
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
-class TransactionModel {
-  final String id;
-  final double amount;
-  final String type; // 'income' or 'expense'
-  final String categoryId; // nullable in DB until user confirms an SMS entry
-  final DateTime date;
-  final String? note;
-  final TransactionSource source;
-  final String? rawSmsBody; // kept for reference/debugging if source is SMS-based
+class AddTransactionModel extends FlutterFlowModel<AddTransactionWidget> {
+  ///  State fields for stateful widgets in this page.
 
-  TransactionModel({
-    required this.id,
-    required this.amount,
-    required this.type,
-    required this.categoryId,
-    required this.date,
-    this.note,
-    this.source = TransactionSource.manual,
-    this.rawSmsBody,
-  });
+  // Model for TextField.
+  late TextFieldModel textFieldModel1;
+  // Model for CategorySelector.
+  late CategorySelectorModel categorySelectorModel1;
+  // Model for CategorySelector.
+  late CategorySelectorModel categorySelectorModel2;
+  // Model for CategorySelector.
+  late CategorySelectorModel categorySelectorModel3;
+  // Model for CategorySelector.
+  late CategorySelectorModel categorySelectorModel4;
+  // Model for CategorySelector.
+  late CategorySelectorModel categorySelectorModel5;
+  // Model for CategorySelector.
+  late CategorySelectorModel categorySelectorModel6;
+  // Model for TextField.
+  late TextFieldModel textFieldModel2;
+  // Model for Button.
+  late ButtonModel buttonModel;
+  // Model for BottomNav.
+  late BottomNavModel bottomNavModel;
 
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'amount': amount,
-        'type': type,
-        'categoryId': categoryId,
-        'date': date.toIso8601String(),
-        'note': note,
-        'source': source.name,
-        'rawSmsBody': rawSmsBody,
-      };
+  @override
+  void initState(BuildContext context) {
+    textFieldModel1 = createModel(context, () => TextFieldModel());
+    categorySelectorModel1 =
+        createModel(context, () => CategorySelectorModel());
+    categorySelectorModel2 =
+        createModel(context, () => CategorySelectorModel());
+    categorySelectorModel3 =
+        createModel(context, () => CategorySelectorModel());
+    categorySelectorModel4 =
+        createModel(context, () => CategorySelectorModel());
+    categorySelectorModel5 =
+        createModel(context, () => CategorySelectorModel());
+    categorySelectorModel6 =
+        createModel(context, () => CategorySelectorModel());
+    textFieldModel2 = createModel(context, () => TextFieldModel());
+    buttonModel = createModel(context, () => ButtonModel());
+    bottomNavModel = createModel(context, () => BottomNavModel());
+  }
 
-  factory TransactionModel.fromMap(Map<String, dynamic> map) => TransactionModel(
-        id: map['id'],
-        amount: map['amount'],
-        type: map['type'],
-        categoryId: map['categoryId'],
-        date: DateTime.parse(map['date']),
-        note: map['note'],
-        source: TransactionSource.values.firstWhere(
-          (e) => e.name == map['source'],
-          orElse: () => TransactionSource.manual,
-        ),
-        rawSmsBody: map['rawSmsBody'],
-      );
+  @override
+  void dispose() {
+    textFieldModel1.dispose();
+    categorySelectorModel1.dispose();
+    categorySelectorModel2.dispose();
+    categorySelectorModel3.dispose();
+    categorySelectorModel4.dispose();
+    categorySelectorModel5.dispose();
+    categorySelectorModel6.dispose();
+    textFieldModel2.dispose();
+    buttonModel.dispose();
+    bottomNavModel.dispose();
+  }
 }

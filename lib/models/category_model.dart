@@ -1,59 +1,53 @@
-/// A user-defined spending/income category.
-/// Nothing is hardcoded — the user creates, renames, colors,
-/// and caps every category themselves. Starter categories are
-/// only suggestions inserted on first launch (see database_helper.dart).
-class CategoryModel {
-  final String id;
-  final String name;
-  final String iconName; // maps to an IconData in the UI layer
-  final int colorValue; // stored as Color.value (int)
-  final String type; // 'income' or 'expense'
-  final double? monthlyCap; // null = no cap set for this category
-  final bool isDefault; // true for starter categories, still editable/deletable
+import '/components/bottom_nav/bottom_nav_widget.dart';
+import '/components/bottom_nav_child5/bottom_nav_child5_widget.dart';
+import '/components/category_card/category_card_widget.dart';
+import '/flutter_flow/flutter_flow_theme.dart';
+import '/flutter_flow/flutter_flow_util.dart';
+import '/flutter_flow/flutter_flow_widgets.dart';
+import 'dart:ui';
+import 'category_management_widget.dart' show CategoryManagementWidget;
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
-  CategoryModel({
-    required this.id,
-    required this.name,
-    required this.iconName,
-    required this.colorValue,
-    required this.type,
-    this.monthlyCap,
-    this.isDefault = false,
-  });
+class CategoryManagementModel
+    extends FlutterFlowModel<CategoryManagementWidget> {
+  ///  State fields for stateful widgets in this page.
 
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'iconName': iconName,
-        'colorValue': colorValue,
-        'type': type,
-        'monthlyCap': monthlyCap,
-        'isDefault': isDefault ? 1 : 0,
-      };
+  // Model for CategoryCard.
+  late CategoryCardModel categoryCardModel1;
+  // Model for CategoryCard.
+  late CategoryCardModel categoryCardModel2;
+  // Model for CategoryCard.
+  late CategoryCardModel categoryCardModel3;
+  // Model for CategoryCard.
+  late CategoryCardModel categoryCardModel4;
+  // Model for CategoryCard.
+  late CategoryCardModel categoryCardModel5;
+  // Model for CategoryCard.
+  late CategoryCardModel categoryCardModel6;
+  // Model for BottomNav.
+  late BottomNavModel bottomNavModel;
 
-  factory CategoryModel.fromMap(Map<String, dynamic> map) => CategoryModel(
-        id: map['id'],
-        name: map['name'],
-        iconName: map['iconName'],
-        colorValue: map['colorValue'],
-        type: map['type'],
-        monthlyCap: map['monthlyCap'],
-        isDefault: map['isDefault'] == 1,
-      );
+  @override
+  void initState(BuildContext context) {
+    categoryCardModel1 = createModel(context, () => CategoryCardModel());
+    categoryCardModel2 = createModel(context, () => CategoryCardModel());
+    categoryCardModel3 = createModel(context, () => CategoryCardModel());
+    categoryCardModel4 = createModel(context, () => CategoryCardModel());
+    categoryCardModel5 = createModel(context, () => CategoryCardModel());
+    categoryCardModel6 = createModel(context, () => CategoryCardModel());
+    bottomNavModel = createModel(context, () => BottomNavModel());
+  }
 
-  CategoryModel copyWith({
-    String? name,
-    String? iconName,
-    int? colorValue,
-    double? monthlyCap,
-  }) =>
-      CategoryModel(
-        id: id,
-        name: name ?? this.name,
-        iconName: iconName ?? this.iconName,
-        colorValue: colorValue ?? this.colorValue,
-        type: type,
-        monthlyCap: monthlyCap ?? this.monthlyCap,
-        isDefault: isDefault,
-      );
+  @override
+  void dispose() {
+    categoryCardModel1.dispose();
+    categoryCardModel2.dispose();
+    categoryCardModel3.dispose();
+    categoryCardModel4.dispose();
+    categoryCardModel5.dispose();
+    categoryCardModel6.dispose();
+    bottomNavModel.dispose();
+  }
 }
