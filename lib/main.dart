@@ -1,63 +1,144 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
+import 'providers/app_providers.dart';
 import 'services/notification_service.dart';
 import 'services/sms_service.dart';
 import 'services/report_service.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/categories_screen.dart';
-import 'screens/reports_screen.dart';
 import 'screens/pending_sms_screen.dart';
 import 'screens/teach_sms_screen.dart';
+import 'screens/reports_screen.dart';
+import 'screens/categories_screen.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    final reportService = ReportService.instance;
+    switch (task) {
+      case 'dailyReport':
+        await reportService.generateAndShowDailyReport();
+        break;
+      case 'monthlyReport':
+        await reportService.generateAndShowMonthlyReport();
+        break;
+    }
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await NotificationService.instance.init();
-
-  // Background task runner for scheduled reports (see report_service.dart).
-  await Workmanager().initialize(callbackDispatcher);
-
-  // SMS listening is opt-in and Android-only — request permission,
-  // then start listening only if granted. iOS builds simply skip this.
-  final smsService = SmsService();
-  final granted = await smsService.requestPermissions();
-  if (granted) {
-    smsService.startListening();
+  try {
+    await NotificationService.instance.init();
+  } catch (e) {
+    debugPrint('NotificationService init failed: $e');
   }
 
-  runApp(const ProviderScope(child: FinanceTrackerApp()));
+  try {
+    await Workmanager().initialize(callbackDispatcher);
+    await _schedulePeriodicReports();
+  } catch (e) {
+    debugPrint('Workmanager init failed: $e');
+  }
+
+  // SMS listening is opt-in and Android-only
+  try {
+    final smsService = SmsService();
+    final granted = await smsService.requestPermissions();
+    if (granted) {
+      smsService.startListening();
+    }
+  } catch (e) {
+    debugPrint('SMS service init failed: $e');
+  }
+
+  runApp(const ProviderScope(child: FusedApp()));
 }
 
-class FinanceTrackerApp extends StatelessWidget {
-  const FinanceTrackerApp({super.key});
+Future<void> _schedulePeriodicReports() async {
+  // Daily report at 8 PM
+  await Workmanager().registerPeriodicTask(
+    'dailyReport',
+    'dailyReport',
+    frequency: const Duration(hours: 24),
+    initialDelay: _timeUntilNextRun(20, 0), // 8 PM
+    constraints: Constraints(networkType: NetworkType.notRequired),
+  );
+
+  // Monthly report on 1st at 9 AM
+  await Workmanager().registerPeriodicTask(
+    'monthlyReport',
+    'monthlyReport',
+    frequency: const Duration(days: 30),
+    initialDelay: _timeUntilNextMonthlyRun(),
+    constraints: Constraints(networkType: NetworkType.notRequired),
+  );
+}
+
+Duration _timeUntilNextRun(int hour, int minute) {
+  final now = DateTime.now();
+  var target = DateTime(now.year, now.month, now.day, hour, minute);
+  if (target.isBefore(now)) {
+    target = target.add(const Duration(days: 1));
+  }
+  return target.difference(now);
+}
+
+Duration _timeUntilNextMonthlyRun() {
+  final now = DateTime.now();
+  var target = DateTime(now.year, now.month, 1, 9, 0);
+  if (target.isBefore(now)) {
+    target = DateTime(now.year, now.month + 1, 1, 9, 0);
+  }
+  return target.difference(now);
+}
+
+class FusedApp extends ConsumerWidget {
+  const FusedApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settingsAsync = ref.watch(settingsProvider);
+
     return MaterialApp(
-      title: 'Finance Tracker',
-      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-      home: const RootNav(),
+      title: 'fused',
+      theme: ThemeData(
+        colorSchemeSeed: Colors.teal,
+        useMaterial3: true,
+        fontFamily: 'Inter',
+      ),
+      home: settingsAsync.when(
+        data: (settings) => settings.onboardingComplete ? const RootNav() : const OnboardingScreen(),
+        loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+        error: (e, st) => Scaffold(body: Center(child: Text('Error loading settings: $e'))),
+      ),
+      routes: {
+        '/onboarding': (_) => const OnboardingScreen(),
+        '/dashboard': (_) => const RootNav(),
+      },
     );
   }
 }
 
-class RootNav extends StatefulWidget {
+class RootNav extends ConsumerStatefulWidget {
   const RootNav({super.key});
 
   @override
-  State<RootNav> createState() => _RootNavState();
+  ConsumerState<RootNav> createState() => _RootNavState();
 }
 
-class _RootNavState extends State<RootNav> {
+class _RootNavState extends ConsumerState<RootNav> {
   int _index = 0;
 
-  static const _screens = [
-    DashboardScreen(),
-    PendingSmsScreen(),
-    TeachSmsScreen(),
-    ReportsScreen(),
-    CategoriesScreen(),
+  late final List<Widget> _screens = [
+    const DashboardScreen(),
+    const PendingSmsScreen(),
+    const TeachSmsScreen(),
+    const ReportsScreen(),
+    const CategoriesScreen(),
   ];
 
   @override

@@ -24,13 +24,16 @@ dependencies:
   flutter_local_notifications: ^17.2.2
 
   # Background scheduled tasks (daily/monthly reports)
-  workmanager: ^0.5.2
+  workmanager: ^0.8.0
 
   # Charts for reports screen
-  fl_chart: ^0.68.0
+  fl_chart: ^1.0.0
 
   # Formatting currency/dates
   intl: ^0.19.0
+
+  # Fonts
+  google_fonts: ^6.2.1
 
   # Simple persisted settings (report frequency, payday, currency)
   shared_preferences: ^2.2.3
@@ -40,10 +43,31 @@ dependencies:
 
   cupertino_icons: ^1.0.6
 
+  # Export/backup
+  path_provider: ^2.1.2
+  share_plus: ^10.0.2
+
+  # Biometric auth
+  local_auth: ^2.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21
+  remove_alpha_android: true
+
+flutter_native_splash:
+  color: "#009688"
+  android: true
+  ios: false
+  web: false

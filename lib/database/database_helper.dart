@@ -1,8 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
-import '../models/category_model.dart';
-import '../models/transaction_model.dart';
+import '../models/data_models.dart';
 import '../models/sms_template_model.dart';
 
 /// Single source of truth for local storage. Everything lives on-device —
@@ -16,6 +15,9 @@ class DatabaseHelper {
   static Database? _db;
   final _uuid = const Uuid();
 
+  /// Current database version - increment when schema changes
+  static const int _dbVersion = 1;
+
   Future<Database> get database async {
     _db ??= await _initDb();
     return _db!;
@@ -25,9 +27,27 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'finance_tracker.db');
     return openDatabase(
       path,
-      version: 1,
+      version: _dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Run migrations sequentially
+    for (int version = oldVersion + 1; version <= newVersion; version++) {
+      await _migrate(db, version);
+    }
+  }
+
+  Future<void> _migrate(Database db, int version) async {
+    switch (version) {
+      case 2:
+        // Example migration for version 2:
+        // await db.execute('ALTER TABLE categories ADD COLUMN new_column TEXT');
+        break;
+      // Add future migrations here
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -61,6 +81,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE pending_sms (
         id TEXT PRIMARY KEY,
+        senderId TEXT NOT NULL,
         amount REAL NOT NULL,
         type TEXT NOT NULL,
         smsDate TEXT NOT NULL,

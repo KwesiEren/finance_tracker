@@ -1,0 +1,5 @@
+@echo off
+setlocal
+set JAVA_HOME=C:\Program Files\Java\jdk-17.0.19
+set PATH=%JAVA_HOME%\bin;%PATH%
+call gradlew.bat assembleDebug

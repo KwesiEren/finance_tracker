@@ -1,488 +1,442 @@
-import '/components/bottom_nav/bottom_nav_widget.dart';
-import '/components/bottom_nav_child5/bottom_nav_child5_widget.dart';
-import '/components/category_card/category_card_widget.dart';
-import '/flutter_flow/flutter_flow_theme.dart';
-import '/flutter_flow/flutter_flow_util.dart';
-import '/flutter_flow/flutter_flow_widgets.dart';
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import '../models/data_models.dart';
+import '../providers/app_providers.dart';
+import '../widgets/fused_button.dart';
+import '../widgets/fused_text_field.dart';
 
-import 'category_management_model.dart';
-export 'category_management_model.dart';
+class CategoriesScreen extends ConsumerStatefulWidget {
+  const CategoriesScreen({super.key});
 
-class CategoryManagementWidget extends StatefulWidget {
-  const CategoryManagementWidget({super.key});
-
-  static String routeName = 'CategoryManagement';
-  static String routePath = '/categoryManagement';
+  static const routeName = 'Categories';
+  static const routePath = '/categories';
 
   @override
-  State<CategoryManagementWidget> createState() =>
-      _CategoryManagementWidgetState();
+  ConsumerState<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
-class _CategoryManagementWidgetState extends State<CategoryManagementWidget> {
-  late CategoryManagementModel _model;
+class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _iconController = TextEditingController();
+  final _colorController = TextEditingController();
+  final _capController = TextEditingController();
 
-  final scaffoldKey = GlobalKey<ScaffoldState>();
+  String _selectedType = 'expense';
+  String _selectedIcon = 'category';
+  int _selectedColor = 0xFF757575;
 
-  @override
-  void initState() {
-    super.initState();
-    _model = createModel(context, () => CategoryManagementModel());
-  }
+  static const _icons = [
+    'category', 'restaurant', 'directions_bus', 'signal_cellular_alt',
+    'bolt', 'payments', 'account_balance_wallet', 'local_gas_station',
+    'shopping_cart', 'movie', 'fitness_center', 'medical_services',
+    'school', 'flight', 'hotel', 'local_grocery_store',
+  ];
+
+  static const _colors = [
+    0xFF4285F4, 0xFF34A853, 0xFFFBBC05, 0xFFEA4335,
+    0xFF9C27B0, 0xFF00BFA5, 0xFFFF6D00, 0xFF607D8B,
+    0xFFE91E63, 0xFF673AB7, 0xFF009688, 0xFF795548,
+  ];
 
   @override
   void dispose() {
-    _model.dispose();
-
+    _nameController.dispose();
+    _iconController.dispose();
+    _colorController.dispose();
+    _capController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            print('FAB pressed ...');
-          },
-          backgroundColor: FlutterFlowTheme.of(context).primary,
-          icon: Icon(
-            Icons.add_rounded,
-            color: FlutterFlowTheme.of(context).onPrimary,
-            size: 24,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final categories = ref.watch(categoriesProvider);
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: Text('Categories', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            onPressed: _showAddCategoryDialog,
+            icon: const Icon(Icons.add_rounded),
           ),
-          elevation: 0,
-          label: Text(
-            'New Category',
-            style: FlutterFlowTheme.of(context).labelLarge.override(
-                  font: GoogleFonts.inter(
-                    fontWeight:
-                        FlutterFlowTheme.of(context).labelLarge.fontWeight,
-                    fontStyle:
-                        FlutterFlowTheme.of(context).labelLarge.fontStyle,
-                  ),
-                  color: FlutterFlowTheme.of(context).onPrimary,
-                  letterSpacing: 0.0,
-                  fontWeight:
-                      FlutterFlowTheme.of(context).labelLarge.fontWeight,
-                  fontStyle: FlutterFlowTheme.of(context).labelLarge.fontStyle,
-                  lineHeight: 1.3,
-                ),
-          ),
-        ),
-        body: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.max,
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+        ],
+      ),
+      body: categories.isEmpty
+          ? _buildEmptyState(colorScheme)
+          : ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: FlutterFlowTheme.of(context).primary,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28),
-                    ),
-                    shape: BoxShape.rectangle,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsetsDirectional.fromSTEB(24, 32, 24, 24),
-                    child: Container(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.max,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Categories',
-                                    style: FlutterFlowTheme.of(context)
-                                        .headlineMedium
-                                        .override(
-                                          font: GoogleFonts.plusJakartaSans(
-                                            fontWeight: FontWeight.bold,
-                                            fontStyle:
-                                                FlutterFlowTheme.of(context)
-                                                    .headlineMedium
-                                                    .fontStyle,
-                                          ),
-                                          color: FlutterFlowTheme.of(context)
-                                              .onPrimary,
-                                          letterSpacing: 0.0,
-                                          fontWeight: FontWeight.bold,
-                                          fontStyle:
-                                              FlutterFlowTheme.of(context)
-                                                  .headlineMedium
-                                                  .fontStyle,
-                                          lineHeight: 1.25,
-                                        ),
-                                  ),
-                                  Text(
-                                    'Manage your spending buckets',
-                                    style: FlutterFlowTheme.of(context)
-                                        .bodySmall
-                                        .override(
-                                          font: GoogleFonts.inter(
-                                            fontWeight:
-                                                FlutterFlowTheme.of(context)
-                                                    .bodySmall
-                                                    .fontWeight,
-                                            fontStyle:
-                                                FlutterFlowTheme.of(context)
-                                                    .bodySmall
-                                                    .fontStyle,
-                                          ),
-                                          color: FlutterFlowTheme.of(context)
-                                              .onPrimary80,
-                                          letterSpacing: 0.0,
-                                          fontWeight:
-                                              FlutterFlowTheme.of(context)
-                                                  .bodySmall
-                                                  .fontWeight,
-                                          fontStyle:
-                                              FlutterFlowTheme.of(context)
-                                                  .bodySmall
-                                                  .fontStyle,
-                                          lineHeight: 1.4,
-                                        ),
-                                  ),
-                                ].divide(SizedBox(height: 4)),
-                              ),
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color:
-                                      FlutterFlowTheme.of(context).onPrimary20,
-                                  borderRadius: BorderRadius.circular(9999),
-                                  shape: BoxShape.rectangle,
-                                ),
-                                alignment: AlignmentDirectional(0, 0),
-                                child: Icon(
-                                  Icons.category_rounded,
-                                  color: FlutterFlowTheme.of(context).onSurface,
-                                  size: 24,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ].divide(SizedBox(height: 16)),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    child: SingleChildScrollView(
-                      primary: false,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Container(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: EdgeInsetsDirectional.fromSTEB(
-                                        0, 0, 0, 8),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.max,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Active Categories',
-                                          style: FlutterFlowTheme.of(context)
-                                              .labelLarge
-                                              .override(
-                                                font: GoogleFonts.inter(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontStyle:
-                                                      FlutterFlowTheme.of(
-                                                              context)
-                                                          .labelLarge
-                                                          .fontStyle,
-                                                ),
-                                                color:
-                                                    FlutterFlowTheme.of(context)
-                                                        .secondaryText,
-                                                letterSpacing: 0.0,
-                                                fontWeight: FontWeight.w600,
-                                                fontStyle:
-                                                    FlutterFlowTheme.of(context)
-                                                        .labelLarge
-                                                        .fontStyle,
-                                                lineHeight: 1.3,
-                                              ),
-                                        ),
-                                        Text(
-                                          '6 total',
-                                          style: FlutterFlowTheme.of(context)
-                                              .labelSmall
-                                              .override(
-                                                font: GoogleFonts.inter(
-                                                  fontWeight:
-                                                      FlutterFlowTheme.of(
-                                                              context)
-                                                          .labelSmall
-                                                          .fontWeight,
-                                                  fontStyle:
-                                                      FlutterFlowTheme.of(
-                                                              context)
-                                                          .labelSmall
-                                                          .fontStyle,
-                                                ),
-                                                color:
-                                                    FlutterFlowTheme.of(context)
-                                                        .onBackground,
-                                                letterSpacing: 0.0,
-                                                fontWeight:
-                                                    FlutterFlowTheme.of(context)
-                                                        .labelSmall
-                                                        .fontWeight,
-                                                fontStyle:
-                                                    FlutterFlowTheme.of(context)
-                                                        .labelSmall
-                                                        .fontStyle,
-                                                lineHeight: 1.3,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  wrapWithModel(
-                                    model: _model.categoryCardModel1,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: CategoryCardWidget(
-                                      cap: '400',
-                                      icon: Icon(
-                                        Icons.directions_bus_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 24,
-                                      ),
-                                      name: 'Transport',
-                                      tone:
-                                          FlutterFlowTheme.of(context).primary,
-                                      isCapped: false,
-                                    ),
-                                  ),
-                                  wrapWithModel(
-                                    model: _model.categoryCardModel2,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: CategoryCardWidget(
-                                      cap: '250',
-                                      icon: Icon(
-                                        Icons.signal_cellular_alt_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 24,
-                                      ),
-                                      name: 'Airtime & Data',
-                                      tone:
-                                          FlutterFlowTheme.of(context).tertiary,
-                                      isCapped: false,
-                                    ),
-                                  ),
-                                  wrapWithModel(
-                                    model: _model.categoryCardModel3,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: CategoryCardWidget(
-                                      cap: '800',
-                                      icon: Icon(
-                                        Icons.restaurant_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 24,
-                                      ),
-                                      name: 'Food',
-                                      tone:
-                                          FlutterFlowTheme.of(context).success,
-                                      isCapped: false,
-                                    ),
-                                  ),
-                                  wrapWithModel(
-                                    model: _model.categoryCardModel4,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: CategoryCardWidget(
-                                      cap: '300',
-                                      icon: Icon(
-                                        Icons.electric_bolt_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 24,
-                                      ),
-                                      name: 'Utilities',
-                                      tone:
-                                          FlutterFlowTheme.of(context).warning,
-                                      isCapped: false,
-                                    ),
-                                  ),
-                                  wrapWithModel(
-                                    model: _model.categoryCardModel5,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: CategoryCardWidget(
-                                      cap: '500',
-                                      icon: Icon(
-                                        Icons.payments_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 24,
-                                      ),
-                                      name: 'Debt Repayment',
-                                      tone: FlutterFlowTheme.of(context).error,
-                                      isCapped: false,
-                                    ),
-                                  ),
-                                  wrapWithModel(
-                                    model: _model.categoryCardModel6,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: CategoryCardWidget(
-                                      cap: '0',
-                                      icon: Icon(
-                                        Icons.account_balance_wallet_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 24,
-                                      ),
-                                      name: 'Salary',
-                                      tone: FlutterFlowTheme.of(context).info,
-                                      isCapped: false,
-                                    ),
-                                  ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: FlutterFlowTheme.of(context)
-                                          .surfaceVariant30,
-                                      borderRadius: BorderRadius.circular(12),
-                                      shape: BoxShape.rectangle,
-                                      border: Border.all(
-                                        color: FlutterFlowTheme.of(context)
-                                            .alternate,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Padding(
-                                      padding: EdgeInsets.all(24),
-                                      child: Container(
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.max,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.start,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.info_rounded,
-                                              color:
-                                                  FlutterFlowTheme.of(context)
-                                                      .secondaryText,
-                                              size: 18,
-                                            ),
-                                            Expanded(
-                                              flex: 1,
-                                              child: Text(
-                                                'Uncapped categories (like Salary) are tracked for income but won\'t trigger overspend alerts.',
-                                                style: FlutterFlowTheme.of(
-                                                        context)
-                                                    .bodySmall
-                                                    .override(
-                                                      font: GoogleFonts.inter(
-                                                        fontWeight:
-                                                            FlutterFlowTheme.of(
-                                                                    context)
-                                                                .bodySmall
-                                                                .fontWeight,
-                                                        fontStyle:
-                                                            FlutterFlowTheme.of(
-                                                                    context)
-                                                                .bodySmall
-                                                                .fontStyle,
-                                                      ),
-                                                      color:
-                                                          FlutterFlowTheme.of(
-                                                                  context)
-                                                              .secondaryText,
-                                                      letterSpacing: 0.0,
-                                                      fontWeight:
-                                                          FlutterFlowTheme.of(
-                                                                  context)
-                                                              .bodySmall
-                                                              .fontWeight,
-                                                      fontStyle:
-                                                          FlutterFlowTheme.of(
-                                                                  context)
-                                                              .bodySmall
-                                                              .fontStyle,
-                                                      lineHeight: 1.4,
-                                                    ),
-                                              ),
-                                            ),
-                                          ].divide(SizedBox(width: 8)),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    height: 100,
-                                  ),
-                                ].divide(SizedBox(height: 16)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                _buildSection('Expense Categories', categories.where((c) => c.type == 'expense').toList(), colorScheme),
+                const SizedBox(height: 24),
+                _buildSection('Income Categories', categories.where((c) => c.type == 'income').toList(), colorScheme),
               ],
             ),
-            Align(
-              alignment: AlignmentDirectional(0, 1),
-              child: Container(
-                child: wrapWithModel(
-                  model: _model.bottomNavModel,
-                  updateCallback: () => safeSetState(() {}),
-                  child: BottomNavWidget(
-                    child: () => BottomNavChild5Widget(),
-                  ),
-                ),
-              ),
+    );
+  }
+
+  Widget _buildEmptyState(ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.category_outlined, size: 64, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'No categories yet',
+              style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create categories to organize your transactions',
+              style: GoogleFonts.inter(fontSize: 14, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FusedButton(
+              label: 'Add Category',
+              variant: FusedButtonVariant.primary,
+              onPressed: _showAddCategoryDialog,
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildSection(String title, List<CategoryModel> items, ColorScheme colorScheme) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12, left: 4),
+          child: Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+          ),
+        ),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final category = items[index];
+            return _CategoryTile(
+              category: category,
+              onEdit: () => _showEditCategoryDialog(category),
+              onDelete: () => _deleteCategory(category),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showAddCategoryDialog() {
+    _resetForm();
+    _showCategoryDialog();
+  }
+
+  void _showEditCategoryDialog(CategoryModel category) {
+    _nameController.text = category.name;
+    _selectedIcon = category.iconName;
+    _selectedColor = category.colorValue;
+    _selectedType = category.type;
+    _capController.text = category.monthlyCap?.toStringAsFixed(0) ?? '';
+    _showCategoryDialog(category: category);
+  }
+
+  void _resetForm() {
+    _nameController.clear();
+    _selectedIcon = 'category';
+    _selectedColor = _colors.first;
+    _selectedType = 'expense';
+    _capController.clear();
+  }
+
+  void _showCategoryDialog({CategoryModel? category}) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return AlertDialog(
+          title: Text(category == null ? 'Add Category' : 'Edit Category', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+          content: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FusedTextField(
+                    controller: _nameController,
+                    label: 'Category Name',
+                    hint: 'e.g., Food, Transport',
+                    validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  // Type selector
+                  Row(
+                    children: ['expense', 'income'].map((type) {
+                      final isSelected = _selectedType == type;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: ChoiceChip(
+                            label: Text(type.capitalize(), style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                            )),
+                            selected: isSelected,
+                            onSelected: (_) => setState(() => _selectedType = type),
+                            selectedColor: colorScheme.primary,
+                            backgroundColor: colorScheme.surfaceContainerHighest,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  // Icon picker
+                  Text('Icon', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _icons.map((icon) {
+                      final isSelected = _selectedIcon == icon;
+                      return InkWell(
+                        onTap: () => setState(() => _selectedIcon = icon),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? colorScheme.primaryContainer : colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Icon(_getIconData(icon), color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant, size: 24),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  // Color picker
+                  Text('Color', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _colors.map((color) {
+                      final isSelected = _selectedColor == color;
+                      return InkWell(
+                        onTap: () => setState(() => _selectedColor = color),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Color(color),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? Colors.white : Colors.transparent,
+                              width: 3,
+                            ),
+                            boxShadow: isSelected ? [
+                              BoxShadow(color: Color(color).withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 2)
+                            ] : null,
+                          ),
+                          child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 24) : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  if (_selectedType == 'expense') ...[
+                    const SizedBox(height: 16),
+                    FusedTextField(
+                      controller: _capController,
+                      label: 'Monthly Cap (optional)',
+                      hint: 'e.g., 500',
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            FusedButton(
+              label: category == null ? 'Create' : 'Save',
+              onPressed: () => _saveCategory(category),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _saveCategory(CategoryModel? existing) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final category = CategoryModel(
+      id: existing?.id ?? const Uuid().v4(),
+      name: _nameController.text.trim(),
+      iconName: _selectedIcon,
+      colorValue: _selectedColor,
+      type: _selectedType,
+      monthlyCap: _capController.text.isEmpty ? null : double.tryParse(_capController.text),
+      isDefault: false,
+    );
+
+    await ref.read(categoriesProvider.notifier).upsert(category);
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _deleteCategory(CategoryModel category) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${category.name}?', style: GoogleFonts.plusJakartaSans()),
+        content: Text('This will remove the category from future transactions. Existing transactions will keep the category name but lose the link.', style: GoogleFonts.inter()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FusedButton(
+            label: 'Delete',
+            variant: FusedButtonVariant.destructive,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ref.read(categoriesProvider.notifier).remove(category.id);
+    }
+  }
+
+  IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'directions_bus': return Icons.directions_bus_rounded;
+      case 'signal_cellular_alt': return Icons.signal_cellular_alt_rounded;
+      case 'restaurant': return Icons.restaurant_rounded;
+      case 'bolt': return Icons.electric_bolt_rounded;
+      case 'payments': return Icons.payments_rounded;
+      case 'account_balance_wallet': return Icons.account_balance_wallet_rounded;
+      case 'local_gas_station': return Icons.local_gas_station_rounded;
+      case 'shopping_cart': return Icons.shopping_cart_rounded;
+      case 'movie': return Icons.movie_rounded;
+      case 'fitness_center': return Icons.fitness_center_rounded;
+      case 'medical_services': return Icons.medical_services_rounded;
+      case 'school': return Icons.school_rounded;
+      case 'flight': return Icons.flight_rounded;
+      case 'hotel': return Icons.hotel_rounded;
+      case 'local_grocery_store': return Icons.local_grocery_store_rounded;
+      default: return Icons.category_rounded;
+    }
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  final CategoryModel category;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _CategoryTile({required this.category, required this.onEdit, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final catColor = Color(category.colorValue);
+
+    return Dismissible(
+      key: Key(category.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(Icons.delete_outline_rounded, color: colorScheme.onErrorContainer, size: 28),
+      ),
+      onDismissed: (_) => onDelete(),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: catColor.withValues(alpha: 0.15),
+            child: Icon(_getIconData(category.iconName), color: catColor),
+          ),
+          title: Text(category.name, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+          subtitle: category.monthlyCap != null
+              ? Text('Cap: GH₵ ${category.monthlyCap!.toStringAsFixed(0)}', style: GoogleFonts.inter(fontSize: 12, color: colorScheme.onSurfaceVariant))
+              : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: category.type == 'income' ? Colors.green.withValues(alpha: 0.15) : colorScheme.error.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  category.type.capitalize(),
+                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: category.type == 'income' ? Colors.green : colorScheme.error),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(onPressed: onEdit, icon: Icon(Icons.edit_outlined, color: colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'directions_bus': return Icons.directions_bus_rounded;
+      case 'signal_cellular_alt': return Icons.signal_cellular_alt_rounded;
+      case 'restaurant': return Icons.restaurant_rounded;
+      case 'bolt': return Icons.electric_bolt_rounded;
+      case 'payments': return Icons.payments_rounded;
+      case 'account_balance_wallet': return Icons.account_balance_wallet_rounded;
+      case 'local_gas_station': return Icons.local_gas_station_rounded;
+      case 'shopping_cart': return Icons.shopping_cart_rounded;
+      case 'movie': return Icons.movie_rounded;
+      case 'fitness_center': return Icons.fitness_center_rounded;
+      case 'medical_services': return Icons.medical_services_rounded;
+      case 'school': return Icons.school_rounded;
+      case 'flight': return Icons.flight_rounded;
+      case 'hotel': return Icons.hotel_rounded;
+      case 'local_grocery_store': return Icons.local_grocery_store_rounded;
+      default: return Icons.category_rounded;
+    }
+  }
+}
+
+extension StringExt on String {
+  String capitalize() => '${this[0].toUpperCase()}${substring(1)}';
 }

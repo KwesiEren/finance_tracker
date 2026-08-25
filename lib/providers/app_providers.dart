@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/database_helper.dart';
-import '../models/category_model.dart';
-import '../models/transaction_model.dart';
-import '../models/settings_model.dart';
+import '../models/data_models.dart';
+import '../models/settings_data.dart';
 import '../services/notification_service.dart';
 
 final dbProvider = Provider((ref) => DatabaseHelper.instance);
@@ -57,8 +56,8 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
   Future<void> add(TransactionModel tx) async {
     await ref.read(dbProvider).insertTransaction(tx);
     await loadCurrentMonth();
-    if (tx.type == 'expense') {
-      await _checkBudget(tx.categoryId);
+    if (tx.type == 'expense' && tx.categoryId != null) {
+      await _checkBudget(tx.categoryId!);
     }
   }
 
@@ -72,7 +71,10 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
     final spentByCategory = await ref.read(dbProvider).getSpentByCategory(from, now);
     final spent = spentByCategory[categoryId] ?? 0;
     final cap = category.monthlyCap!;
-    final settings = ref.read(settingsProvider);
+    final settingsAsync = ref.read(settingsProvider);
+
+    final settings = settingsAsync.value;
+    if (settings == null) return;
 
     if (spent >= cap) {
       await NotificationService.instance.showBudgetAlert(
@@ -93,7 +95,9 @@ class TransactionsNotifier extends StateNotifier<List<TransactionModel>> {
 }
 
 /// User settings — currency, payday, report frequency, alert threshold.
-final settingsProvider = StateProvider<SettingsModel>((ref) => const SettingsModel());
+final settingsProvider = StateNotifierProvider<SettingsNotifier, AsyncValue<SettingsData>>((ref) {
+  return SettingsNotifier();
+});
 
 /// Convenience: total income/expense for the currently loaded transaction list.
 final monthSummaryProvider = Provider<({double income, double expense})>((ref) {

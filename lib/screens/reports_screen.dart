@@ -1,457 +1,279 @@
-import '/components/bottom_nav/bottom_nav_widget.dart';
-import '/components/bottom_nav_child6/bottom_nav_child6_widget.dart';
-import '/components/button/button_widget.dart';
-import '/components/pie_chart/pie_chart_widget.dart';
-import '/components/report_list_item/report_list_item_widget.dart';
-import '/components/summary_card/summary_card_widget.dart';
-import '/components/tab_group/tab_group_widget.dart';
-import '/flutter_flow/flutter_flow_icon_button.dart';
-import '/flutter_flow/flutter_flow_theme.dart';
-import '/flutter_flow/flutter_flow_util.dart';
-import '/flutter_flow/flutter_flow_widgets.dart';
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../providers/app_providers.dart';
+import '../services/report_service.dart';
+import '../widgets/spending_pie_chart.dart';
+import '../widgets/report_list_item.dart';
 
-import 'spending_reports_model.dart';
-export 'spending_reports_model.dart';
+class ReportsScreen extends ConsumerStatefulWidget {
+  const ReportsScreen({super.key});
 
-class SpendingReportsWidget extends StatefulWidget {
-  const SpendingReportsWidget({super.key});
-
-  static String routeName = 'SpendingReports';
-  static String routePath = '/spendingReports';
+  static const routeName = 'Reports';
+  static const routePath = '/reports';
 
   @override
-  State<SpendingReportsWidget> createState() => _SpendingReportsWidgetState();
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _SpendingReportsWidgetState extends State<SpendingReportsWidget> {
-  late SpendingReportsModel _model;
-
-  final scaffoldKey = GlobalKey<ScaffoldState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _model = createModel(context, () => SpendingReportsModel());
-  }
-
-  @override
-  void dispose() {
-    _model.dispose();
-
-    super.dispose();
-  }
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  final _reportService = ReportService.instance;
+  final _formatter = NumberFormat.currency(symbol: 'GH₵ ', decimalDigits: 0);
+  String _selectedPeriod = 'monthly';
+  DateTime _currentDate = DateTime.now();
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-        body: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SingleChildScrollView(
-              primary: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: FlutterFlowTheme.of(context).secondaryBackground,
-                      shape: BoxShape.rectangle,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding:
-                              EdgeInsetsDirectional.fromSTEB(24, 32, 24, 24),
-                          child: Container(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.start,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Spending Reports',
-                                          style: FlutterFlowTheme.of(context)
-                                              .headlineSmall
-                                              .override(
-                                                font:
-                                                    GoogleFonts.plusJakartaSans(
-                                                  fontWeight: FontWeight.w800,
-                                                  fontStyle:
-                                                      FlutterFlowTheme.of(
-                                                              context)
-                                                          .headlineSmall
-                                                          .fontStyle,
-                                                ),
-                                                color:
-                                                    FlutterFlowTheme.of(context)
-                                                        .primaryText,
-                                                letterSpacing: 0.0,
-                                                fontWeight: FontWeight.w800,
-                                                fontStyle:
-                                                    FlutterFlowTheme.of(context)
-                                                        .headlineSmall
-                                                        .fontStyle,
-                                                lineHeight: 1.3,
-                                              ),
-                                        ),
-                                        Text(
-                                          'Monthly summary for October',
-                                          style: FlutterFlowTheme.of(context)
-                                              .bodySmall
-                                              .override(
-                                                font: GoogleFonts.inter(
-                                                  fontWeight:
-                                                      FlutterFlowTheme.of(
-                                                              context)
-                                                          .bodySmall
-                                                          .fontWeight,
-                                                  fontStyle:
-                                                      FlutterFlowTheme.of(
-                                                              context)
-                                                          .bodySmall
-                                                          .fontStyle,
-                                                ),
-                                                color:
-                                                    FlutterFlowTheme.of(context)
-                                                        .secondaryText,
-                                                letterSpacing: 0.0,
-                                                fontWeight:
-                                                    FlutterFlowTheme.of(context)
-                                                        .bodySmall
-                                                        .fontWeight,
-                                                fontStyle:
-                                                    FlutterFlowTheme.of(context)
-                                                        .bodySmall
-                                                        .fontStyle,
-                                                lineHeight: 1.4,
-                                              ),
-                                        ),
-                                      ].divide(SizedBox(height: 4)),
-                                    ),
-                                    FlutterFlowIconButton(
-                                      borderRadius: 8,
-                                      buttonSize: 40,
-                                      fillColor: Colors.transparent,
-                                      icon: Icon(
-                                        Icons.calendar_today_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 24,
-                                      ),
-                                      onPressed: () {
-                                        print('IconButton pressed ...');
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                wrapWithModel(
-                                  model: _model.tabGroupModel,
-                                  updateCallback: () => safeSetState(() {}),
-                                  child: TabGroupWidget(
-                                    label2: 'Monthly',
-                                    label2Present: true,
-                                    label3: 'Yearly',
-                                    label3Present: true,
-                                    label4: '',
-                                    label4Present: false,
-                                    label5: '',
-                                    label5Present: false,
-                                    label1: 'Daily',
-                                  ),
-                                ),
-                              ].divide(SizedBox(height: 16)),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            color: FlutterFlowTheme.of(context).alternate,
-                            shape: BoxShape.rectangle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: wrapWithModel(
-                            model: _model.summaryCardModel1,
-                            updateCallback: () => safeSetState(() {}),
-                            child: SummaryCardWidget(
-                              color: FlutterFlowTheme.of(context).success,
-                              icon: Icon(
-                                Icons.north_east_rounded,
-                                color: FlutterFlowTheme.of(context).success,
-                                size: 18,
-                              ),
-                              label: 'Total Income',
-                              value: '4,850',
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: wrapWithModel(
-                            model: _model.summaryCardModel2,
-                            updateCallback: () => safeSetState(() {}),
-                            child: SummaryCardWidget(
-                              color: FlutterFlowTheme.of(context).error,
-                              icon: Icon(
-                                Icons.south_west_rounded,
-                                color: FlutterFlowTheme.of(context).success,
-                                size: 18,
-                              ),
-                              label: 'Total Spend',
-                              value: '2,400',
-                            ),
-                          ),
-                        ),
-                      ].divide(SizedBox(width: 16)),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Container(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color:
-                              FlutterFlowTheme.of(context).secondaryBackground,
-                          borderRadius: BorderRadius.circular(20),
-                          shape: BoxShape.rectangle,
-                          border: Border.all(
-                            color: FlutterFlowTheme.of(context).alternate,
-                            width: 1,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Container(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  'Expense Breakdown',
-                                  style: FlutterFlowTheme.of(context)
-                                      .titleMedium
-                                      .override(
-                                        font: GoogleFonts.plusJakartaSans(
-                                          fontWeight: FontWeight.bold,
-                                          fontStyle:
-                                              FlutterFlowTheme.of(context)
-                                                  .titleMedium
-                                                  .fontStyle,
-                                        ),
-                                        color: FlutterFlowTheme.of(context)
-                                            .primaryText,
-                                        letterSpacing: 0.0,
-                                        fontWeight: FontWeight.bold,
-                                        fontStyle: FlutterFlowTheme.of(context)
-                                            .titleMedium
-                                            .fontStyle,
-                                        lineHeight: 1.4,
-                                      ),
-                                ),
-                                wrapWithModel(
-                                  model: _model.pieChartModel,
-                                  updateCallback: () => safeSetState(() {}),
-                                  child: PieChartWidget(
-                                    centerValue: '',
-                                    centerValuePresent: false,
-                                    centerLabel: '',
-                                    centerLabelPresent: false,
-                                    data: '42,28,15,10,5',
-                                    labels: 'Food,Commute,Data,Rent,Misc',
-                                    colors:
-                                        'primary,accent,warning,info,divider',
-                                    animate: false,
-                                    startAngle: -90.0,
-                                    variant: 'donut',
-                                    size: 'medium',
-                                    legend: 'right',
-                                    legendValue: 'percent',
-                                    ring: 'thick',
-                                    gap: 'tight',
-                                  ),
-                                ),
-                                Divider(
-                                  height: 16,
-                                  thickness: 1,
-                                  indent: 0,
-                                  endIndent: 0,
-                                  color: FlutterFlowTheme.of(context).alternate,
-                                ),
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    wrapWithModel(
-                                      model: _model.reportListItemModel1,
-                                      updateCallback: () => safeSetState(() {}),
-                                      child: ReportListItemWidget(
-                                        amount: '1,008.00',
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        percent: '42',
-                                        title: 'Food & Groceries',
-                                      ),
-                                    ),
-                                    wrapWithModel(
-                                      model: _model.reportListItemModel2,
-                                      updateCallback: () => safeSetState(() {}),
-                                      child: ReportListItemWidget(
-                                        amount: '672.00',
-                                        color: FlutterFlowTheme.of(context)
-                                            .tertiary,
-                                        percent: '28',
-                                        title: 'Commute & Fuel',
-                                      ),
-                                    ),
-                                    wrapWithModel(
-                                      model: _model.reportListItemModel3,
-                                      updateCallback: () => safeSetState(() {}),
-                                      child: ReportListItemWidget(
-                                        amount: '360.00',
-                                        color: FlutterFlowTheme.of(context)
-                                            .warning,
-                                        percent: '15',
-                                        title: 'Data & Airtime',
-                                      ),
-                                    ),
-                                    wrapWithModel(
-                                      model: _model.reportListItemModel4,
-                                      updateCallback: () => safeSetState(() {}),
-                                      child: ReportListItemWidget(
-                                        amount: '240.00',
-                                        color:
-                                            FlutterFlowTheme.of(context).info,
-                                        percent: '10',
-                                        title: 'Rent & Utilities',
-                                      ),
-                                    ),
-                                  ].divide(SizedBox(height: 16)),
-                                ),
-                              ].divide(SizedBox(height: 24)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Container(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            wrapWithModel(
-                              model: _model.buttonModel1,
-                              updateCallback: () => safeSetState(() {}),
-                              child: ButtonWidget(
-                                icon: Icon(
-                                  Icons.share_rounded,
-                                  color:
-                                      FlutterFlowTheme.of(context).primaryText,
-                                  size: 24,
-                                ),
-                                iconPresent: true,
-                                iconEndPresent: false,
-                                content: 'Send Report Now',
-                                variant: 'primary',
-                                size: 'medium',
-                                fullWidth: true,
-                                loading: false,
-                                disabled: false,
-                              ),
-                            ),
-                            wrapWithModel(
-                              model: _model.buttonModel2,
-                              updateCallback: () => safeSetState(() {}),
-                              child: ButtonWidget(
-                                icon: Icon(
-                                  Icons.description_rounded,
-                                  color:
-                                      FlutterFlowTheme.of(context).primaryText,
-                                  size: 24,
-                                ),
-                                iconPresent: true,
-                                iconEndPresent: false,
-                                content: 'Export CSV History',
-                                variant: 'outline',
-                                size: 'medium',
-                                fullWidth: true,
-                                loading: false,
-                                disabled: false,
-                              ),
-                            ),
-                          ].divide(SizedBox(height: 16)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    height: 120,
-                  ),
-                ],
-              ),
-            ),
-            Align(
-              alignment: AlignmentDirectional(0, 1),
-              child: Container(
-                child: wrapWithModel(
-                  model: _model.bottomNavModel,
-                  updateCallback: () => safeSetState(() {}),
-                  child: BottomNavWidget(
-                    child: () => BottomNavChild6Widget(),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final categories = ref.watch(categoriesProvider);
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: Text('Reports', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: FutureBuilder<ReportData>(
+        future: _selectedPeriod == 'monthly'
+            ? _reportService.getMonthlyReport(_currentDate)
+            : _reportService.getDailyReport(_currentDate),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator(color: colorScheme.primary));
+          }
+
+          final report = snapshot.data;
+          if (report == null) {
+            return _buildEmptyState(colorScheme);
+          }
+
+          return CustomScrollView(
+            slivers: [
+              // Summary Card
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: ReportSummaryCard(
+                    income: report.income,
+                    expense: report.expense,
+                    net: report.net,
+                    period: _formatPeriod(report.from, report.to),
+                    transactionCount: report.transactionCount,
                   ),
                 ),
               ),
-            ),
+              // Period Selector
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _PeriodSelector(
+                    selectedPeriod: _selectedPeriod,
+                    currentDate: _currentDate,
+                    onPeriodChanged: (period) => setState(() => _selectedPeriod = period),
+                    onDateChanged: (date) => setState(() => _currentDate = date),
+                  ),
+                ),
+              ),
+              // Pie Chart
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SpendingPieChart(
+                    categorySpending: {for (var c in report.categoryBreakdown) c.category.id: c.amount},
+                    categories: categories,
+                    total: report.expense,
+                    onSectionTapped: (categoryId) {},
+                  ),
+                ),
+              ),
+              // Legend
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: LegendList(
+                    categorySpending: {for (var c in report.categoryBreakdown) c.category.id: c.amount},
+                    categories: categories,
+                    total: report.expense,
+                  ),
+                ),
+              ),
+              // Monthly Reports List
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Recent Months', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700)),
+                          TextButton(onPressed: () {}, child: Text('View All', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _MonthlyReportsList(reportService: _reportService),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bar_chart_outlined, size: 64, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
+            Text('No data yet', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            Text('Add transactions to see reports', style: GoogleFonts.inter(fontSize: 14, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7))),
           ],
         ),
       ),
     );
   }
+
+  String _formatPeriod(DateTime from, DateTime to) {
+    if (_selectedPeriod == 'monthly') {
+      return DateFormat('MMMM yyyy').format(from);
+    } else {
+      return DateFormat('MMM d, yyyy').format(from);
+    }
+  }
+}
+
+class _PeriodSelector extends ConsumerWidget {
+  final String selectedPeriod;
+  final DateTime currentDate;
+  final ValueChanged<String> onPeriodChanged;
+  final ValueChanged<DateTime> onDateChanged;
+
+  const _PeriodSelector({
+    required this.selectedPeriod,
+    required this.currentDate,
+    required this.onPeriodChanged,
+    required this.onDateChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        Row(
+          children: ['daily', 'monthly'].map((period) {
+            final isSelected = selectedPeriod == period;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ChoiceChip(
+                  label: Text(period.capitalize(), style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                  )),
+                  selected: isSelected,
+                  onSelected: (_) => onPeriodChanged(period),
+                  selectedColor: colorScheme.primary,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: currentDate,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) onDateChanged(picked);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, color: colorScheme.onSurfaceVariant, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  selectedPeriod == 'monthly'
+                      ? DateFormat('MMMM yyyy').format(currentDate)
+                      : DateFormat('MMM d, yyyy').format(currentDate),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthlyReportsList extends StatelessWidget {
+  final ReportService reportService;
+
+  const _MonthlyReportsList({required this.reportService});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final formatter = NumberFormat.currency(symbol: 'GH₵ ', decimalDigits: 0);
+
+    return FutureBuilder<List<ReportData>>(
+      future: reportService.getMonthlyReports(months: 6),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final reports = snapshot.data ?? [];
+        if (reports.isEmpty) return const SizedBox.shrink();
+
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: reports.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final report = reports[index];
+            return ReportListItem(
+              title: DateFormat('MMMM yyyy').format(report.from),
+              period: '${report.transactionCount} transactions',
+              income: report.income,
+              expense: report.expense,
+              net: report.net,
+              onTap: () {},
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+extension StringExt on String {
+  String capitalize() => '${this[0].toUpperCase()}${substring(1)}';
 }

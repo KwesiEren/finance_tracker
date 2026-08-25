@@ -1,6 +1,8 @@
 import 'package:another_telephony/telephony.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
+import '../models/data_models.dart';
+import '../models/sms_template_model.dart';
 import 'sms_template_matcher.dart';
 
 /// Reads incoming SMS (Android only) and matches them against the user's
@@ -42,7 +44,7 @@ class SmsService {
     );
     final cutoff = DateTime.now().subtract(Duration(days: lookbackDays));
     for (final msg in messages) {
-      final date = DateTime.fromMillisecondsSinceEpoch(int.tryParse(msg.date ?? '0') ?? 0);
+      final date = DateTime.fromMillisecondsSinceEpoch(int.tryParse(msg.date as String? ?? '0') ?? 0);
       if (date.isBefore(cutoff)) continue;
       await _handleIncoming(msg);
     }
@@ -60,6 +62,7 @@ class SmsService {
       final direction = SmsTemplateMatcher.matchDirection(sender, body, templates) ?? 'expense';
       await _db.insertPendingSms({
         'id': _uuid.v4(),
+        'senderId': sender,
         'amount': amount,
         'type': direction,
         'smsDate': DateTime.now().toIso8601String(),
@@ -81,5 +84,37 @@ class SmsService {
         'dismissed': 0,
       });
     }
+  }
+
+  Future<List<PendingSmsItem>> getPendingSmsItems() async {
+    final rows = await _db.getPendingSms();
+    return rows.map((r) => PendingSmsItem.fromMap(r)).toList();
+  }
+
+  Future<int> getPendingSmsCount() async {
+    final items = await getPendingSmsItems();
+    return items.length;
+  }
+
+  Future<List<UnrecognizedSmsItem>> getUnrecognizedItems() async {
+    final rows = await _db.getUnrecognized();
+    return rows.map((r) => UnrecognizedSmsItem.fromMap(r)).toList();
+  }
+
+  Future<void> dismissUnrecognized(String id) async {
+    await _db.dismissUnrecognized(id);
+  }
+
+  Future<void> dismissPendingSms(String id) async {
+    await _db.dismissPendingSms(id);
+  }
+
+  Future<void> insertUnrecognized(Map<String, dynamic> row) async {
+    await _db.insertUnrecognized(row);
+  }
+
+  Future<List<SmsTemplateModel>> getTemplatesForSender(String sender) async {
+    final all = await _db.getTemplates();
+    return all.where((t) => t.senderId == sender).toList();
   }
 }
