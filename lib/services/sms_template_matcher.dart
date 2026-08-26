@@ -70,26 +70,54 @@ class SmsTemplateMatcher {
     return null;
   }
 
+  static String _normalize(String s) => s.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
+
   static double? _tryMatch(String body, SmsTemplateModel template) {
-    // Build a regex anchored on the "before" context, capturing whatever
-    // number comes right after it, and — if present — requiring the
-    // "after" context to follow. This tolerates the amount itself
-    // differing (that's the whole point) while requiring the surrounding
-    // wording to match closely enough to be confident it's the same kind
-    // of alert.
     if (template.before.isEmpty && template.after.isEmpty) return null;
 
-    final beforeEscaped = RegExp.escape(template.before);
-    final afterEscaped = RegExp.escape(template.after);
+    final normBody = _normalize(body);
+    final normBefore = _normalize(template.before);
+    final normAfter = _normalize(template.after);
 
-    final pattern = template.after.isNotEmpty
-        ? '$beforeEscaped\\s+([\\d,]+\\.?\\d*)\\s+$afterEscaped'
-        : '$beforeEscaped\\s+([\\d,]+\\.?\\d*)';
+    final beforeEscaped = RegExp.escape(normBefore);
+    final afterEscaped = RegExp.escape(normAfter);
 
-    final match = RegExp(pattern, caseSensitive: false).firstMatch(body);
+    // Allow optional punctuation/colon/dash between context and amount, and tolerate commas/spaces in amount.
+    // Amount pattern supports GHS/GH₵/₵/GHC optional prefix.
+    const amountPat = r'(?:GH₵|GHS|GHC|₵)?\s*([\d,]+\.?\d*)';
+    final pattern = normAfter.isNotEmpty
+        ? '$beforeEscaped\\s*[:\\-]?\\s*$amountPat\\s*[:\\-]?\\s*$afterEscaped'
+        : '$beforeEscaped\\s*[:\\-]?\\s*$amountPat';
+
+    final match = RegExp(pattern, caseSensitive: false).firstMatch(normBody);
     if (match == null) return null;
 
-    return double.tryParse(match.group(1)!.replaceAll(',', ''));
+    return double.tryParse(match.group(1)!.replaceAll(',', '').replaceAll(' ', ''));
+  }
+
+  /// Returns all amount candidates in a body for UI highlighting.
+  static List<({String token, double value, int index})> findAmountCandidates(String body) {
+    final tokens = tokenize(body);
+    final out = <({String token, double value, int index})>[];
+    for (int i = 0; i < tokens.length; i++) {
+      final cleaned = tokens[i].replaceAll(RegExp(r'[^\d.,]'), '').replaceAll(',', '');
+      final v = double.tryParse(cleaned);
+      // Consider token an amount if it looks like currency or decimal number
+      if (v != null && RegExp(r'^\d[\d,]*\.?\d*$').hasMatch(tokens[i].replaceAll(RegExp(r'^[GH₵₵\s]+'), '')) && (tokens[i].contains(RegExp(r'\d')) && (tokens[i].contains('.') || v >= 1))) {
+        // Extra check: contains GH₵/GHS nearby or is decimal-like
+        final raw = tokens[i].toLowerCase();
+        final isCurrencyLike = raw.contains('gh') || raw.contains('₵') || RegExp(r'\d+\.\d{1,2}').hasMatch(tokens[i]) || RegExp(r'^\d+,\d{3}').hasMatch(tokens[i]);
+        if (isCurrencyLike || v >= 0.5) out.add((token: tokens[i], value: v, index: i));
+      }
+    }
+    // Fallback: also regex scan whole body for amounts
+    if (out.isEmpty) {
+      for (final m in RegExp(r'(?:GH₵|GHS|₵|GHC)?\s*([\d,]+\.\d{1,2})').allMatches(body)) {
+        final v = double.tryParse(m.group(1)!.replaceAll(',', ''));
+        if (v != null) out.add((token: m.group(0)!, value: v, index: body.indexOf(m.group(0)!)));
+      }
+    }
+    return out;
   }
 
   /// Soft heuristic used only to decide whether an *unmatched* message is

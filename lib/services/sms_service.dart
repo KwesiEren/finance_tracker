@@ -96,6 +96,26 @@ class SmsService {
     return items.length;
   }
 
+  /// Returns recent inbox messages filtered to financial-looking only (for picker)
+  Future<List<SmsMessage>> getInboxForPicker({int limit = 100}) async {
+    try {
+      final msgs = await _telephony.getInboxSms(
+        columns: [SmsColumn.ADDRESS, SmsColumn.BODY, SmsColumn.DATE],
+        sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
+      );
+      final out = <SmsMessage>[];
+      for (final m in msgs) {
+        if (m.body == null || m.body!.isEmpty) continue;
+        if (!SmsTemplateMatcher.looksFinancial(m.body!)) continue;
+        out.add(m);
+        if (out.length >= limit) break;
+      }
+      return out;
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<UnrecognizedSmsItem>> getUnrecognizedItems() async {
     final rows = await _db.getUnrecognized();
     return rows.map((r) => UnrecognizedSmsItem.fromMap(r)).toList();

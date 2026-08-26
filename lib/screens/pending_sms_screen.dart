@@ -18,26 +18,30 @@ class PendingSmsScreen extends ConsumerStatefulWidget {
   ConsumerState<PendingSmsScreen> createState() => _PendingSmsScreenState();
 }
 
-class _PendingSmsScreenState extends ConsumerState<PendingSmsScreen> {
+class _PendingSmsScreenState extends ConsumerState<PendingSmsScreen> with WidgetsBindingObserver {
   final _smsService = SmsService();
   final _formatter = NumberFormat.currency(symbol: 'GH₵ ', decimalDigits: 2);
+
+  @override
+  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); }
+  @override
+  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) { if (state == AppLifecycleState.resumed) { _smsService.scanInbox(lookbackDays: 1); ref.invalidate(pendingSmsProvider); } }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final categories = ref.watch(categoriesProvider);
+    final pendingAsync = ref.watch(pendingSmsProvider);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      body: FutureBuilder<List<PendingSmsItem>>(
-        future: _smsService.getPendingSmsItems(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: colorScheme.primary));
-          }
-
-          final items = snapshot.data ?? [];
+      body: pendingAsync.when(
+        loading: () => Center(child: CircularProgressIndicator(color: colorScheme.primary)),
+        error: (e, st) => Center(child: Text('Error: $e')),
+        data: (items) {
           final uncategorizedCount = items.length;
           final uncategorizedAmount = items.fold(0.0, (sum, item) => sum + item.amount);
 
@@ -206,17 +210,18 @@ class _PendingSmsScreenState extends ConsumerState<PendingSmsScreen> {
 
     await ref.read(transactionsProvider.notifier).add(transaction);
     await _smsService.dismissPendingSms(item.id);
+    ref.invalidate(pendingSmsProvider);
     ref.invalidate(transactionsProvider);
     if (mounted) setState(() {});
   }
 
   Future<void> _dismissItem(String id) async {
     await _smsService.dismissPendingSms(id);
+    ref.invalidate(pendingSmsProvider);
     if (mounted) setState(() {});
   }
 
   Future<void> _teachItem(PendingSmsItem item) async {
-    // Convert to unrecognized SMS format and dismiss from pending
     await _smsService.insertUnrecognized({
       'id': const Uuid().v4(),
       'senderId': item.senderId,
@@ -225,6 +230,8 @@ class _PendingSmsScreenState extends ConsumerState<PendingSmsScreen> {
       'dismissed': 0,
     });
     await _smsService.dismissPendingSms(item.id);
+    ref.invalidate(pendingSmsProvider);
+    ref.invalidate(unrecognizedSmsProvider);
     if (mounted) setState(() {});
   }
 }

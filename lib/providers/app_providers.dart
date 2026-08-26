@@ -99,6 +99,18 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, AsyncValue<Sett
   return SettingsNotifier();
 });
 
+final pendingSmsProvider = FutureProvider<List<PendingSmsItem>>((ref) async {
+  final db = ref.watch(dbProvider);
+  final rows = await db.getPendingSms();
+  return rows.map((r) => PendingSmsItem.fromMap(r)).toList();
+});
+
+final unrecognizedSmsProvider = FutureProvider<List<UnrecognizedSmsItem>>((ref) async {
+  final db = ref.watch(dbProvider);
+  final rows = await db.getUnrecognized();
+  return rows.map((r) => UnrecognizedSmsItem.fromMap(r)).toList();
+});
+
 /// Convenience: total income/expense for the currently loaded transaction list.
 final monthSummaryProvider = Provider<({double income, double expense})>((ref) {
   final txs = ref.watch(transactionsProvider);
