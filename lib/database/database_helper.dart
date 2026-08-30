@@ -31,6 +31,7 @@ class DatabaseHelper {
       version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onConfigure: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
     );
   }
 
@@ -171,7 +172,16 @@ class DatabaseHelper {
 
   Future<void> deleteCategory(String id) async {
     final db = await database;
+    // Nullify categoryId on linked transactions so they become uncategorized rather than dangling
+    await db.update('transactions', {'categoryId': null}, where: 'categoryId = ?', whereArgs: [id]);
+    await db.update('pending_sms', {'suggestedCategoryId': null}, where: 'suggestedCategoryId = ?', whereArgs: [id]);
     await db.delete('categories', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> countTransactionsForCategory(String categoryId) async {
+    final db = await database;
+    final res = await db.rawQuery('SELECT COUNT(*) as c FROM transactions WHERE categoryId = ?', [categoryId]);
+    return (res.first['c'] as int?) ?? 0;
   }
 
   // ---------------- Transactions ----------------

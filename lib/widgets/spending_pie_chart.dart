@@ -114,27 +114,34 @@ class SpendingPieChart extends StatelessWidget {
 
   IconData _getIconData(String iconName) {
     switch (iconName) {
-      case 'directions_bus':
-        return Icons.directions_bus_rounded;
-      case 'phone_android':
-      case 'signal_cellular_alt':
-        return Icons.signal_cellular_alt_rounded;
-      case 'restaurant':
-        return Icons.restaurant_rounded;
+      case 'directions_bus': return Icons.directions_bus_rounded;
+      case 'phone_android': return Icons.phone_android_rounded;
+      case 'signal_cellular_alt': return Icons.signal_cellular_alt_rounded;
+      case 'restaurant': return Icons.restaurant_rounded;
       case 'bolt':
-      case 'electric_bolt':
-        return Icons.electric_bolt_rounded;
-      case 'payments':
-        return Icons.payments_rounded;
-      case 'account_balance_wallet':
-        return Icons.account_balance_wallet_rounded;
-      case 'local_gas_station':
-        return Icons.local_gas_station_rounded;
-      case 'add_circle':
-        return Icons.add_circle_rounded;
+      case 'electric_bolt': return Icons.electric_bolt_rounded;
+      case 'payments': return Icons.payments_rounded;
+      case 'account_balance_wallet': return Icons.account_balance_wallet_rounded;
+      case 'local_gas_station': return Icons.local_gas_station_rounded;
+      case 'shopping_cart': return Icons.shopping_cart_rounded;
+      case 'movie': return Icons.movie_rounded;
+      case 'fitness_center': return Icons.fitness_center_rounded;
+      case 'medical_services': return Icons.medical_services_rounded;
+      case 'school': return Icons.school_rounded;
+      case 'flight': return Icons.flight_rounded;
+      case 'hotel': return Icons.hotel_rounded;
+      case 'local_grocery_store': return Icons.local_grocery_store_rounded;
+      case 'work': return Icons.work_rounded;
+      case 'business_center': return Icons.business_center_rounded;
+      case 'savings': return Icons.savings_rounded;
+      case 'attach_money': return Icons.attach_money_rounded;
+      case 'trending_up': return Icons.trending_up_rounded;
+      case 'home': return Icons.home_rounded;
+      case 'computer': return Icons.computer_rounded;
+      case 'store': return Icons.store_rounded;
+      case 'add_circle': return Icons.add_circle_rounded;
       case 'category':
-      default:
-        return Icons.category_rounded;
+      default: return Icons.category_rounded;
     }
   }
 }
