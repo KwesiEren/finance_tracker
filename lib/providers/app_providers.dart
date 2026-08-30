@@ -3,6 +3,7 @@ import '../database/database_helper.dart';
 import '../models/data_models.dart';
 import '../models/settings_data.dart';
 import '../services/notification_service.dart';
+import '../services/sms_refresh.dart';
 
 final dbProvider = Provider((ref) => DatabaseHelper.instance);
 
@@ -99,13 +100,22 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, AsyncValue<Sett
   return SettingsNotifier();
 });
 
+final smsTickProvider = StreamProvider<void>((ref) async* {
+  await for (final _ in smsRefreshController.stream) {
+    yield null;
+  }
+});
+
 final pendingSmsProvider = FutureProvider<List<PendingSmsItem>>((ref) async {
+  // Rebuild whenever sms tables change
+  ref.watch(smsTickProvider);
   final db = ref.watch(dbProvider);
   final rows = await db.getPendingSms();
   return rows.map((r) => PendingSmsItem.fromMap(r)).toList();
 });
 
 final unrecognizedSmsProvider = FutureProvider<List<UnrecognizedSmsItem>>((ref) async {
+  ref.watch(smsTickProvider);
   final db = ref.watch(dbProvider);
   final rows = await db.getUnrecognized();
   return rows.map((r) => UnrecognizedSmsItem.fromMap(r)).toList();

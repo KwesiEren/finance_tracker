@@ -1,7 +1,7 @@
 name: finance_tracker
 description: Personal income, expense, and budget tracker with SMS auto-detection.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -63,7 +63,7 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   image_path: "assets/icon/icon.png"
-  min_sdk_android: 21
+  min_sdk_android: 24
   remove_alpha_android: true
 
 flutter_native_splash:

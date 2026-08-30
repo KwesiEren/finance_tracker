@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
 import '../models/data_models.dart';
 import '../models/sms_template_model.dart';
+import '../services/sms_sender_normalizer.dart';
 
 /// Single source of truth for local storage. Everything lives on-device —
 /// no backend, no account needed. This keeps the app fast, offline-capable,
@@ -16,7 +17,7 @@ class DatabaseHelper {
   final _uuid = const Uuid();
 
   /// Current database version - increment when schema changes
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   Future<Database> get database async {
     _db ??= await _initDb();
@@ -43,8 +44,17 @@ class DatabaseHelper {
   Future<void> _migrate(Database db, int version) async {
     switch (version) {
       case 2:
-        // Example migration for version 2:
-        // await db.execute('ALTER TABLE categories ADD COLUMN new_column TEXT');
+        // Normalize senderId for reliable template matching (MTN MoMo == mtnmomo == MTN-MOMO)
+        await db.execute('ALTER TABLE sms_templates ADD COLUMN senderNormalized TEXT');
+        // Backfill existing rows: lower + remove spaces/dashes/underscores/dots
+        await db.execute(
+            "UPDATE sms_templates SET senderNormalized = lower(replace(replace(replace(replace(senderId,' ',''),'-',''),'_',''),'.',''))");
+        // Also handle +233 prefix normalized to 0
+        await db.execute(
+            "UPDATE sms_templates SET senderNormalized = '0' || substr(senderNormalized, 5) WHERE senderNormalized LIKE '+233%'");
+        await db.execute(
+            "UPDATE sms_templates SET senderNormalized = '0' || substr(senderNormalized, 4) WHERE senderNormalized GLOB '233[0-9]*' AND length(senderNormalized) >= 11");
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_templates_sender_normalized ON sms_templates(senderNormalized)');
         break;
       // Add future migrations here
     }
@@ -97,6 +107,7 @@ class DatabaseHelper {
       CREATE TABLE sms_templates (
         id TEXT PRIMARY KEY,
         senderId TEXT NOT NULL,
+        senderNormalized TEXT,
         before TEXT NOT NULL,
         after TEXT NOT NULL,
         direction TEXT NOT NULL,
@@ -104,6 +115,7 @@ class DatabaseHelper {
         createdAt TEXT NOT NULL
       )
     ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_templates_sender_normalized ON sms_templates(senderNormalized)');
 
     // Messages that looked financial (soft heuristic) but matched no
     // saved template yet — surfaced to the user to teach or dismiss.
@@ -237,6 +249,13 @@ class DatabaseHelper {
 
   Future<void> insertPendingSms(Map<String, dynamic> row) async {
     final db = await database;
+    // Deduplicate: same body from same sender already pending
+    final existing = await db.query(
+      'pending_sms',
+      where: 'senderId = ? AND rawSmsBody = ? AND dismissed = 0',
+      whereArgs: [row['senderId'], row['rawSmsBody']],
+    );
+    if (existing.isNotEmpty) return;
     await db.insert('pending_sms', row, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
@@ -254,8 +273,9 @@ class DatabaseHelper {
 
   Future<void> insertTemplate(SmsTemplateModel template) async {
     final db = await database;
-    await db.insert('sms_templates', template.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    final map = template.toMap();
+    map['senderNormalized'] = normalizeSender(template.senderId);
+    await db.insert('sms_templates', map, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<SmsTemplateModel>> getTemplates() async {
@@ -292,5 +312,17 @@ class DatabaseHelper {
   Future<void> dismissUnrecognized(String id) async {
     final db = await database;
     await db.update('unrecognized_sms', {'dismissed': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Clears all user data — transactions, pending/unrecognized SMS, templates, and custom categories.
+  /// Starter categories are re-seeded so the app remains usable.
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.delete('transactions');
+    await db.delete('pending_sms');
+    await db.delete('unrecognized_sms');
+    await db.delete('sms_templates');
+    await db.delete('categories');
+    await _insertStarterCategories(db);
   }
 }

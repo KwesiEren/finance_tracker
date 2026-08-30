@@ -15,6 +15,7 @@ import 'screens/categories_screen.dart';
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    WidgetsFlutterBinding.ensureInitialized();
     final reportService = ReportService.instance;
     switch (task) {
       case 'dailyReport':
@@ -22,6 +23,14 @@ void callbackDispatcher() {
         break;
       case 'monthlyReport':
         await reportService.generateAndShowMonthlyReport();
+        break;
+      case 'smsPoll':
+        try {
+          final sms = SmsService();
+          await sms.scanInbox(lookbackDays: 2);
+        } catch (e) {
+          debugPrint('smsPoll failed: $e');
+        }
         break;
     }
     return Future.value(true);
@@ -40,6 +49,7 @@ void main() async {
   try {
     await Workmanager().initialize(callbackDispatcher);
     await _schedulePeriodicReports();
+    await _scheduleSmsPolling();
   } catch (e) {
     debugPrint('Workmanager init failed: $e');
   }
@@ -50,6 +60,10 @@ void main() async {
     final granted = await smsService.requestPermissions();
     if (granted) {
       smsService.startListening();
+      // Keep foreground service alive on OEMs when user has detection enabled
+      try {
+        await smsService.startForeground();
+      } catch (_) {}
     }
   } catch (e) {
     debugPrint('SMS service init failed: $e');
@@ -75,6 +89,17 @@ Future<void> _schedulePeriodicReports() async {
     frequency: const Duration(days: 30),
     initialDelay: _timeUntilNextMonthlyRun(),
     constraints: Constraints(networkType: NetworkType.notRequired),
+  );
+}
+
+Future<void> _scheduleSmsPolling() async {
+  await Workmanager().registerPeriodicTask(
+    'smsPoll_unique',
+    'smsPoll',
+    frequency: const Duration(minutes: 15),
+    initialDelay: const Duration(minutes: 5),
+    constraints: Constraints(networkType: NetworkType.notRequired, requiresBatteryNotLow: false),
+    existingWorkPolicy: ExistingWorkPolicy.replace,
   );
 }
 
@@ -130,8 +155,9 @@ class RootNav extends ConsumerStatefulWidget {
   ConsumerState<RootNav> createState() => _RootNavState();
 }
 
-class _RootNavState extends ConsumerState<RootNav> {
+class _RootNavState extends ConsumerState<RootNav> with WidgetsBindingObserver {
   int _index = 0;
+  final _smsService = SmsService();
 
   late final List<Widget> _screens = [
     const DashboardScreen(),
@@ -140,6 +166,50 @@ class _RootNavState extends ConsumerState<RootNav> {
     const ReportsScreen(),
     const CategoriesScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Start SMS listening if enabled (after settings load)
+    Future.microtask(() async {
+      // Wait a bit for settings to load from DB
+      await Future.delayed(const Duration(milliseconds: 500));
+      final settings = ref.read(settingsProvider).value;
+      if (settings?.smsDetectionEnabled == true) {
+        final granted = await _smsService.requestPermissions();
+        if (granted) {
+          _smsService.startListening();
+          await _smsService.startForeground();
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Catch SMS missed while backgrounded (listenInBackground:false)
+      _smsService.scanInbox(lookbackDays: 1);
+      // Ensure listening is active if user has it enabled
+      final settings = ref.read(settingsProvider).value;
+      if (settings?.smsDetectionEnabled == true) {
+        () async {
+          final granted = await _smsService.requestPermissions();
+          if (granted) {
+            _smsService.startListening();
+            await _smsService.startForeground();
+          }
+        }();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

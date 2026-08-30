@@ -1,8 +1,11 @@
 import 'package:another_telephony/telephony.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../models/data_models.dart';
 import '../models/sms_template_model.dart';
+import 'sms_refresh.dart';
+import 'sms_sender_normalizer.dart';
 import 'sms_template_matcher.dart';
 
 /// Reads incoming SMS (Android only) and matches them against the user's
@@ -21,6 +24,10 @@ class SmsService {
   final Telephony _telephony = Telephony.instance;
   final _uuid = const Uuid();
   final _db = DatabaseHelper.instance;
+  static bool _isListening = false;
+  static const _serviceChannel = MethodChannel('com.fused/service');
+  static const _smsChannel = MethodChannel('com.fused/sms');
+  static bool _nativeChannelSetup = false;
 
   Future<bool> requestPermissions() async {
     final granted = await _telephony.requestPhoneAndSmsPermissions;
@@ -28,36 +35,34 @@ class SmsService {
   }
 
   void startListening() {
+    if (_isListening) return;
+    _isListening = true;
     _telephony.listenIncomingSms(
       onNewMessage: (SmsMessage message) => _handleIncoming(message),
       listenInBackground: false,
     );
+    setupNativeChannel();
   }
 
-  /// Optional: scan existing inbox on first setup so historical messages
-  /// aren't missed, and so the "teach" screen has real examples to show
-  /// right after onboarding instead of starting empty.
-  Future<void> scanInbox({int lookbackDays = 30}) async {
-    final messages = await _telephony.getInboxSms(
-      columns: [SmsColumn.BODY, SmsColumn.DATE, SmsColumn.ADDRESS],
-      sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
-    );
-    final cutoff = DateTime.now().subtract(Duration(days: lookbackDays));
-    for (final msg in messages) {
-      final date = DateTime.fromMillisecondsSinceEpoch(int.tryParse(msg.date as String? ?? '0') ?? 0);
-      if (date.isBefore(cutoff)) continue;
-      await _handleIncoming(msg);
-    }
+  void setupNativeChannel() {
+    if (_nativeChannelSetup) return;
+    _nativeChannelSetup = true;
+    _smsChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onSmsReceived') {
+        final args = call.arguments as Map?;
+        final sender = args?['sender'] as String? ?? 'Unknown';
+        final body = args?['body'] as String? ?? '';
+        final ts = args?['timestamp'] as int? ?? DateTime.now().millisecondsSinceEpoch;
+        final date = DateTime.fromMillisecondsSinceEpoch(ts);
+        await _handleNative(sender, body, date);
+      }
+    });
   }
 
-  Future<void> _handleIncoming(SmsMessage message) async {
-    final body = message.body ?? '';
-    final sender = message.address ?? 'Unknown';
+  Future<void> _handleNative(String sender, String body, DateTime date) async {
     if (body.isEmpty) return;
-
     final templates = await _db.getTemplates();
     final amount = SmsTemplateMatcher.match(sender, body, templates);
-
     if (amount != null) {
       final direction = SmsTemplateMatcher.matchDirection(sender, body, templates) ?? 'expense';
       await _db.insertPendingSms({
@@ -65,25 +70,65 @@ class SmsService {
         'senderId': sender,
         'amount': amount,
         'type': direction,
-        'smsDate': DateTime.now().toIso8601String(),
+        'smsDate': date.toIso8601String(),
         'rawSmsBody': body,
         'suggestedCategoryId': null,
         'dismissed': 0,
       });
+      bumpSmsRefresh();
       return;
     }
-
-    // No template matched — queue it for teaching only if it's plausibly
-    // a financial message, so the teach screen doesn't fill up with noise.
     if (SmsTemplateMatcher.looksFinancial(body)) {
       await _db.insertUnrecognized({
         'id': _uuid.v4(),
         'senderId': sender,
         'body': body,
-        'receivedAt': DateTime.now().toIso8601String(),
+        'receivedAt': date.toIso8601String(),
         'dismissed': 0,
       });
+      bumpSmsRefresh();
     }
+  }
+
+  Future<void> startForeground() async {
+    try {
+      await _serviceChannel.invokeMethod('startForeground');
+    } catch (_) {}
+  }
+
+  Future<void> stopForeground() async {
+    try {
+      await _serviceChannel.invokeMethod('stopForeground');
+    } catch (_) {}
+  }
+
+  /// Scan existing inbox for missed messages (used by WorkManager polling + resume fallback).
+  Future<void> scanInbox({int lookbackDays = 30}) async {
+    try {
+      final messages = await _telephony.getInboxSms(
+        columns: [SmsColumn.BODY, SmsColumn.DATE, SmsColumn.ADDRESS],
+        sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
+      );
+      final cutoff = DateTime.now().subtract(Duration(days: lookbackDays));
+      for (final msg in messages) {
+        final millis = int.tryParse(msg.date?.toString() ?? '0') ?? 0;
+        final date = millis > 0 ? DateTime.fromMillisecondsSinceEpoch(millis) : DateTime.now();
+        if (date.isBefore(cutoff)) continue;
+        await _handleIncoming(msg);
+      }
+    } catch (_) {
+      // Permission denied or Telephony unavailable (e.g., WorkManager isolate without grant)
+      return;
+    }
+  }
+
+  Future<void> _handleIncoming(SmsMessage message) async {
+    final body = message.body ?? '';
+    final sender = message.address ?? 'Unknown';
+    if (body.isEmpty) return;
+    final millis = int.tryParse(message.date?.toString() ?? '0') ?? 0;
+    final smsDate = millis > 0 ? DateTime.fromMillisecondsSinceEpoch(millis) : DateTime.now();
+    await _handleNative(sender, body, smsDate);
   }
 
   Future<List<PendingSmsItem>> getPendingSmsItems() async {
@@ -123,18 +168,22 @@ class SmsService {
 
   Future<void> dismissUnrecognized(String id) async {
     await _db.dismissUnrecognized(id);
+    bumpSmsRefresh();
   }
 
   Future<void> dismissPendingSms(String id) async {
     await _db.dismissPendingSms(id);
+    bumpSmsRefresh();
   }
 
   Future<void> insertUnrecognized(Map<String, dynamic> row) async {
     await _db.insertUnrecognized(row);
+    bumpSmsRefresh();
   }
 
   Future<List<SmsTemplateModel>> getTemplatesForSender(String sender) async {
     final all = await _db.getTemplates();
-    return all.where((t) => t.senderId == sender).toList();
+    final norm = normalizeSender(sender);
+    return all.where((t) => normalizeSender(t.senderId) == norm).toList();
   }
 }

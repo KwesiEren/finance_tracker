@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../models/data_models.dart';
 import '../providers/app_providers.dart';
-import '../services/sms_service.dart';
 import '../widgets/fused_button.dart';
 import '../widgets/budget_row.dart';
 import '../widgets/transaction_tile.dart';
@@ -24,7 +23,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  final _smsService = SmsService();
   final _scrollController = ScrollController();
 
   @override
@@ -40,8 +38,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final monthSummary = ref.watch(monthSummaryProvider);
     final categories = ref.watch(categoriesProvider);
     final transactions = ref.watch(transactionsProvider);
+    final settings = ref.watch(settingsProvider).value;
+    final currencySymbol = settings?.currencySymbol ?? 'GH₵';
+    final payday = settings?.payday ?? 25;
     final expenseCategories = categories.where((c) => c.type == 'expense').toList();
-    final formatter = NumberFormat.currency(symbol: 'GH₵ ', decimalDigits: 0);
+    final formatter = NumberFormat.currency(symbol: '$currencySymbol ', decimalDigits: 0);
 
     // Build spent-by-category map for budgets
     final spentByCategory = <String, double>{};
@@ -51,8 +52,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
     }
 
-    final safeToSpend = _calculateSafeToSpend(monthSummary.income, monthSummary.expense);
-    final daysLeft = _daysLeftInMonth();
+    final safeToSpend = _calculateSafeToSpend(monthSummary.income, monthSummary.expense, payday);
+    final daysLeft = _daysUntilPayday(payday);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -68,6 +69,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         onRefresh: () async {
           ref.invalidate(transactionsProvider);
           ref.invalidate(categoriesProvider);
+          ref.invalidate(pendingSmsProvider);
         },
         child: CustomScrollView(
           controller: _scrollController,
@@ -262,11 +264,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildPendingSmsAlert(ColorScheme colorScheme) {
     return Consumer(
       builder: (context, ref, _) {
-        // We'll check pending SMS count via a future provider or stream
-        return FutureBuilder<int>(
-          future: _smsService.getPendingSmsCount(),
-          builder: (context, snapshot) {
-            final count = snapshot.data ?? 0;
+        final pendingAsync = ref.watch(pendingSmsProvider);
+        return pendingAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (items) {
+            final count = items.length;
             if (count == 0) return const SizedBox.shrink();
 
             return Container(
@@ -410,19 +413,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  double _calculateSafeToSpend(double income, double expense) {
-    final now = DateTime.now();
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final daysLeft = daysInMonth - now.day + 1;
+  double _calculateSafeToSpend(double income, double expense, int payday) {
+    final daysLeft = _daysUntilPayday(payday);
     final remaining = income - expense;
     if (daysLeft <= 0) return remaining;
     return (remaining / daysLeft).clamp(0, double.infinity);
   }
 
-  int _daysLeftInMonth() {
+  int _daysUntilPayday(int payday) {
     final now = DateTime.now();
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    return daysInMonth - now.day + 1;
+    DateTime nextPayday;
+    // Handle month overflow (e.g., payday 31 in Feb)
+    int daysInThisMonth = DateTime(now.year, now.month + 1, 0).day;
+    int thisPay = payday.clamp(1, daysInThisMonth);
+    if (now.day < thisPay) {
+      nextPayday = DateTime(now.year, now.month, thisPay);
+    } else {
+      int daysInNextMonth = DateTime(now.year, now.month + 2, 0).day;
+      int nextPay = payday.clamp(1, daysInNextMonth);
+      // Handle December -> January
+      if (now.month == 12) {
+        nextPayday = DateTime(now.year + 1, 1, nextPay);
+      } else {
+        nextPayday = DateTime(now.year, now.month + 1, nextPay);
+      }
+    }
+    // Inclusive days left
+    return nextPayday.difference(DateTime(now.year, now.month, now.day)).inDays + 1;
   }
 
   void _navigateToPendingSms() {

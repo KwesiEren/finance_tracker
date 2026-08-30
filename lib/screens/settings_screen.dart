@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 
 import '../providers/app_providers.dart';
+import '../services/sms_refresh.dart';
+import '../services/sms_service.dart';
 import '../widgets/fused_button.dart';
 import '../widgets/settings_tile.dart';
 
@@ -63,8 +65,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   SettingsTile(
                     leading: Icon(Icons.speed_rounded, color: colorScheme.onSurfaceVariant, size: 22),
                     title: 'Daily Safe-Spend Logic',
-                    value: 'Remaining / Days Left',
-                    onTap: () {}, // Info only
+                    value: 'Remaining / Days until payday',
+                    onTap: _showSafeSpendInfo,
                   ),
                 ],
               ),
@@ -90,7 +92,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: 'SMS Detection',
                     subtitle: 'Automatically detect transactions from SMS',
                     value: settings.smsDetectionEnabled,
-                    onChanged: (v) => ref.read(settingsProvider.notifier).setSmsDetectionEnabled(v),
+                    onChanged: (v) async {
+                      if (v) {
+                        final sms = SmsService();
+                        final granted = await sms.requestPermissions();
+                        if (granted) {
+                          sms.startListening();
+                          await sms.startForeground();
+                          await sms.scanInbox(lookbackDays: 1);
+                          await ref.read(settingsProvider.notifier).setSmsDetectionEnabled(true);
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SMS detection enabled — listening in background')));
+                        } else {
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SMS permission denied')));
+                        }
+                      } else {
+                        await SmsService().stopForeground();
+                        await ref.read(settingsProvider.notifier).setSmsDetectionEnabled(false);
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SMS detection disabled')));
+                      }
+                    },
                   ),
                 ],
               ),
@@ -139,12 +159,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   SettingsTile(
                     leading: Icon(Icons.privacy_tip_outlined, color: colorScheme.onSurfaceVariant, size: 22),
                     title: 'Privacy Policy',
-                    onTap: () {},
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Privacy Policy — coming soon'))),
                   ),
                   SettingsTile(
                     leading: Icon(Icons.article_outlined, color: colorScheme.onSurfaceVariant, size: 22),
                     title: 'Terms of Service',
-                    onTap: () {},
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Terms of Service — coming soon'))),
                   ),
                 ],
               ),
@@ -284,6 +304,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       case 3: return '${n}rd';
       default: return '${n}th';
     }
+  }
+
+  void _showSafeSpendInfo() {
+    final settings = ref.read(settingsProvider).value;
+    final payday = settings?.payday ?? 25;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(ctx).colorScheme.outlineVariant, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          Text('Daily Safe-Spend', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          Text('Remaining balance divided by days until your payday (${_getOrdinal(payday)}). Change payday in settings to adjust.', style: GoogleFonts.inter(fontSize: 14, height: 1.4)),
+          const SizedBox(height: 16),
+          Text('Formula: (Income − Expense) ÷ DaysUntilPayday', style: GoogleFonts.inter(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 16),
+        ]),
+      ),
+    );
   }
 
   Future<void> _exportData() async {
@@ -499,10 +541,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (confirm == true) {
-      // TODO: Implement actual data deletion
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All data deleted')),
-      );
+      try {
+        await ref.read(dbProvider).clearAllData();
+        ref.invalidate(categoriesProvider);
+        ref.invalidate(transactionsProvider);
+        ref.invalidate(pendingSmsProvider);
+        ref.invalidate(unrecognizedSmsProvider);
+        bumpSmsRefresh();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('All data deleted — starter categories restored')),
+          );
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      }
     }
   }
 }

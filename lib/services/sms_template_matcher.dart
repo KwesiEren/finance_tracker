@@ -1,4 +1,5 @@
 import '../models/sms_template_model.dart';
+import 'sms_sender_normalizer.dart';
 
 /// Turns a user-tagged example message into a reusable template, and
 /// matches future incoming messages against saved templates.
@@ -53,7 +54,8 @@ class SmsTemplateMatcher {
   /// Tries every saved template for this sender against a new message.
   /// Returns the extracted amount if a match is found, else null.
   static double? match(String senderId, String body, List<SmsTemplateModel> templates) {
-    final candidates = templates.where((t) => t.senderId == senderId);
+    final norm = normalizeSender(senderId);
+    final candidates = templates.where((t) => normalizeSender(t.senderId) == norm);
     for (final template in candidates) {
       final amount = _tryMatch(body, template);
       if (amount != null) return amount;
@@ -63,7 +65,8 @@ class SmsTemplateMatcher {
 
   /// Returns the direction of the first matching template, if any.
   static String? matchDirection(String senderId, String body, List<SmsTemplateModel> templates) {
-    final candidates = templates.where((t) => t.senderId == senderId);
+    final norm = normalizeSender(senderId);
+    final candidates = templates.where((t) => normalizeSender(t.senderId) == norm);
     for (final template in candidates) {
       if (_tryMatch(body, template) != null) return template.direction;
     }
@@ -82,17 +85,18 @@ class SmsTemplateMatcher {
     final beforeEscaped = RegExp.escape(normBefore);
     final afterEscaped = RegExp.escape(normAfter);
 
-    // Allow optional punctuation/colon/dash between context and amount, and tolerate commas/spaces in amount.
-    // Amount pattern supports GHS/GH₵/₵/GHC optional prefix.
-    const amountPat = r'(?:GH₵|GHS|GHC|₵)?\s*([\d,]+\.?\d*)';
+    // Tolerate optional punctuation/separators around amount and support both prefix and suffix currency.
+    const amountPat = r'(?:GH₵|GHS|GHC|₵)?\s*([\d, ]+\.?\d*)\s*(?:GH₵|GHS|GHC|₵)?';
+    // Allow broader separators: colon, dash, dot, comma, equals, parentheses, quotes
+    const sep = r'[\s:\-.,=()"' + "'" + r']*';
     final pattern = normAfter.isNotEmpty
-        ? '$beforeEscaped\\s*[:\\-]?\\s*$amountPat\\s*[:\\-]?\\s*$afterEscaped'
-        : '$beforeEscaped\\s*[:\\-]?\\s*$amountPat';
+        ? '$beforeEscaped$sep$amountPat$sep$afterEscaped'
+        : '$beforeEscaped$sep$amountPat';
 
     final match = RegExp(pattern, caseSensitive: false).firstMatch(normBody);
     if (match == null) return null;
 
-    return double.tryParse(match.group(1)!.replaceAll(',', '').replaceAll(' ', ''));
+    return double.tryParse(match.group(1)!.replaceAll(',', '').replaceAll(' ', '').trim());
   }
 
   /// Returns all amount candidates in a body for UI highlighting.

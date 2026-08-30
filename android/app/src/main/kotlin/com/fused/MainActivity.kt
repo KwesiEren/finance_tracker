@@ -1,4 +1,4 @@
-package com.fused.fused
+package com.fused
 
 import io.flutter.embedding.android.FlutterActivity
 

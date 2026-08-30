@@ -19,7 +19,6 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   final _reportService = ReportService.instance;
-  final _formatter = NumberFormat.currency(symbol: 'GH₵ ', decimalDigits: 0);
   String _selectedPeriod = 'monthly';
   DateTime _currentDate = DateTime.now();
 
@@ -85,7 +84,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     categorySpending: {for (var c in report.categoryBreakdown) c.category.id: c.amount},
                     categories: categories,
                     total: report.expense,
-                    onSectionTapped: (categoryId) {},
+                    onSectionTapped: (categoryId) {
+                      final cat = categories.where((c) => c.id == categoryId).firstOrNull;
+                      if (cat != null && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${cat.name}: GH₵ ${report.categoryBreakdown.where((e) => e.category.id == categoryId).firstOrNull?.amount.toStringAsFixed(0) ?? "0"}')));
+                      }
+                    },
                   ),
                 ),
               ),
@@ -111,7 +115,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('Recent Months', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700)),
-                          TextButton(onPressed: () {}, child: Text('View All', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+                          TextButton(onPressed: () => _showAllMonths(context), child: Text('View All', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -123,6 +127,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _showAllMonths(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.outlineVariant, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              Text('All Months', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              Expanded(child: _MonthlyReportsList(reportService: _reportService, months: 24, scrollController: scrollController)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -234,16 +264,16 @@ class _PeriodSelector extends ConsumerWidget {
 
 class _MonthlyReportsList extends StatelessWidget {
   final ReportService reportService;
+  final int months;
+  final ScrollController? scrollController;
 
-  const _MonthlyReportsList({required this.reportService});
+  const _MonthlyReportsList({required this.reportService, this.months = 6, this.scrollController});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final formatter = NumberFormat.currency(symbol: 'GH₵ ', decimalDigits: 0);
 
     return FutureBuilder<List<ReportData>>(
-      future: reportService.getMonthlyReports(months: 6),
+      future: reportService.getMonthlyReports(months: months),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -253,8 +283,9 @@ class _MonthlyReportsList extends StatelessWidget {
         if (reports.isEmpty) return const SizedBox.shrink();
 
         return ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          controller: scrollController,
+          shrinkWrap: scrollController == null,
+          physics: scrollController == null ? const NeverScrollableScrollPhysics() : const ClampingScrollPhysics(),
           itemCount: reports.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
@@ -265,7 +296,9 @@ class _MonthlyReportsList extends StatelessWidget {
               income: report.income,
               expense: report.expense,
               net: report.net,
-              onTap: () {},
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${DateFormat('MMMM yyyy').format(report.from)} — ${report.transactionCount} txns, net GH₵ ${report.net.toStringAsFixed(0)}')));
+              },
             );
           },
         );

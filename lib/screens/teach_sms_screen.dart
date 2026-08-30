@@ -422,15 +422,15 @@ class _TeachSmsScreenState extends ConsumerState<TeachSmsScreen> {
 
   Future<void> _createTemplateFromSelection(UnrecognizedSmsItem item) async {
     if (_amountTokenIndex == null) return;
-    final before = _selectedBeforeTokens.join(' ');
-    final after = _selectedAfterTokens.join(' ');
-    // Build simple template directly if no before/after selected, use matcher logic
-    String finalBefore = before;
-    String finalAfter = after;
+    final tokens = _parseTokens(item.body);
+    final idx = _amountTokenIndex!;
+    // Preserve message order for before/after despite Set insertion order
+    final beforeOrdered = tokens.asMap().entries.where((e) => e.key < idx && _selectedBeforeTokens.contains(e.value)).map((e) => e.value).join(' ');
+    final afterOrdered = tokens.asMap().entries.where((e) => e.key > idx && _selectedAfterTokens.contains(e.value)).map((e) => e.value).join(' ');
+    String finalBefore = beforeOrdered;
+    String finalAfter = afterOrdered;
     if (finalBefore.isEmpty && finalAfter.isEmpty) {
       // fallback: use 2 tokens before/after amount
-      final tokens = _parseTokens(item.body);
-      final idx = _amountTokenIndex!;
       finalBefore = tokens.sublist((idx - 2).clamp(0, tokens.length), idx).join(' ');
       finalAfter = idx + 1 < tokens.length ? tokens.sublist(idx + 1, (idx + 3).clamp(0, tokens.length)).join(' ') : '';
     }
